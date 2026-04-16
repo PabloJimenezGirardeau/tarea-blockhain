@@ -1,19 +1,15 @@
 # Blockchain Dashboard Project
-
-Use this repository to build your blockchain dashboard project.
 Update this README every week.
 
 ## Student Information
-
 | Field | Value |
 |---|---|
-| Student Name | |
-| GitHub Username | |
-| Project Title | |
-| Chosen AI Approach | |
+| Student Name | Pablo Jiménez |
+| GitHub Username | PabloJimenezGirardeau |
+| Project Title | CryptoChain Analyzer Dashboard |
+| Chosen AI Approach | To be decided — evaluating Difficulty Predictor (time-series) vs Anomaly Detector (inter-block times) |
 
 ## Module Tracking
-
 Use one of these values: `Not started`, `In progress`, `Done`
 
 | Module | What it should include | Status |
@@ -24,36 +20,26 @@ Use one of these values: `Not started`, `In progress`, `Done`
 | M4 | AI Component | Not started |
 
 ## Current Progress
-
-Write 3 to 5 short lines about what you have already done.
-
-- 
-- 
-- 
+- Accepted GitHub Classroom assignment and set up the repository structure.
+- Connected to the Mempool.space API and retrieved live Bitcoin block data.
+- Script `api/blockchain_client.py` fetches height, hash, difficulty, nonce, bits and transaction count from the latest block.
+- Verified that the block hash shows leading zeros, confirming Proof of Work visually.
 
 ## Next Step
-
-Write the next small step you will do before the next class.
-
-- 
+- Begin M1: build the Proof of Work Monitor module with difficulty value and block time distribution plot.
 
 ## Main Problem or Blocker
-
-Write here if you are stuck with something.
-
-- 
+- AI approach not yet decided between Difficulty Predictor and Anomaly Detector.
 
 ## How to Run
-
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
 ## Project Structure
-
 ```text
-template-blockchain-dashboard/
+tarea-blockhain/
 |-- README.md
 |-- requirements.txt
 |-- .gitignore
@@ -66,21 +52,3 @@ template-blockchain-dashboard/
     |-- m3_difficulty_history.py
     `-- m4_ai_component.py
 ```
-
-<!-- student-repo-auditor:teacher-feedback:start -->
-## Teacher Feedback
-
-### Kick-off Review
-
-Review time: 2026-04-16 09:59 CEST
-Status: Amber
-
-Strength:
-- Your repository keeps the expected classroom structure.
-
-Improve now:
-- The README is present but still misses part of the required kickoff information.
-
-Next step:
-- Complete the README fields for student information, AI approach, module status, and next step.
-<!-- student-repo-auditor:teacher-feedback:end -->
