@@ -7,7 +7,7 @@ Update this README every week.
 | Student Name | Pablo Jiménez |
 | GitHub Username | PabloJimenezGirardeau |
 | Project Title | CryptoChain Analyzer Dashboard |
-| Chosen AI Approach | To be decided — evaluating Difficulty Predictor (time-series) vs Anomaly Detector (inter-block times) |
+| Chosen AI Approach | M4: Anomaly Detector (inter-block time distribution) + M7: Difficulty Predictor (time-series) |
 
 ## Module Tracking
 Use one of these values: `Not started`, `In progress`, `Done`
@@ -24,12 +24,13 @@ Use one of these values: `Not started`, `In progress`, `Done`
 - Connected to the Mempool.space API and retrieved live Bitcoin block data.
 - Script `api/blockchain_client.py` fetches height, hash, difficulty, nonce, bits and transaction count from the latest block.
 - Verified that the block hash shows leading zeros, confirming Proof of Work visually.
+- AI approach decided: Anomaly Detector for M4 and Difficulty Predictor for M7.
 
 ## Next Step
 - Begin M1: build the Proof of Work Monitor module with difficulty value and block time distribution plot.
 
 ## Main Problem or Blocker
-- AI approach not yet decided between Difficulty Predictor and Anomaly Detector.
+- No blockers at this point.
 
 ## How to Run
 ```bash
