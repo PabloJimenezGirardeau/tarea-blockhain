@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
+import streamlit.components.v1 as components
 
 from api.blockchain_client import get_latest_block, get_blocks_paginated
 
@@ -24,11 +25,6 @@ BLOCKS_TO_FETCH   = 50         # how many recent blocks to analyse
 # ── Cryptographic helpers ──────────────────────────────────────────────────────
 
 def count_leading_zero_bits(hash_hex: str) -> int:
-    """
-    Count the number of leading zero bits in a 256-bit block hash.
-    A valid PoW hash must have at least `leading_zeros` bits set to 0.
-    This is the direct visual representation of the SHA-256 difficulty target.
-    """
     hash_int = int(hash_hex, 16)
     if hash_int == 0:
         return 256
@@ -36,21 +32,10 @@ def count_leading_zero_bits(hash_hex: str) -> int:
 
 
 def estimate_hashrate(difficulty: float) -> float:
-    """
-    Estimate the network hash rate in hashes/second.
-    Formula: hashrate = difficulty × 2^32 / 600
-    Derived from: difficulty = hashrate × target_block_time / 2^32
-    (See Bitcoin whitepaper and Section 6 of course notes.)
-    """
     return difficulty * (2**32) / BLOCK_TIME_TARGET
 
 
 def bits_to_target_hex(bits: int) -> str:
-    """
-    Decode the compact 'bits' field into the full 256-bit target threshold.
-    Format: first byte = exponent, next 3 bytes = mantissa.
-    target = mantissa × 2^(8 × (exponent − 3))
-    """
     exponent = bits >> 24
     mantissa = bits & 0x007FFFFF
     target   = mantissa * (2 ** (8 * (exponent - 3)))
@@ -60,7 +45,6 @@ def bits_to_target_hex(bits: int) -> str:
 # ── Section renderers ──────────────────────────────────────────────────────────
 
 def _render_live_metrics(block: dict) -> None:
-    """Section 1 — Live network metrics from the latest block."""
     st.subheader("📡 Live Network State")
 
     difficulty = block["difficulty"]
@@ -68,7 +52,7 @@ def _render_live_metrics(block: dict) -> None:
     bits       = block["bits"]
 
     hashrate_hs  = estimate_hashrate(difficulty)
-    hashrate_ehs = hashrate_hs / 1e18          # convert to ExaHashes/s
+    hashrate_ehs = hashrate_hs / 1e18
     leading_zeros = count_leading_zero_bits(hash_hex)
 
     col1, col2, col3 = st.columns(3)
@@ -95,16 +79,11 @@ def _render_live_metrics(block: dict) -> None:
 
 
 def _render_256bit_visual(block: dict) -> None:
-    """
-    Section 2 — Visual representation of the 256-bit PoW threshold.
-    Shows how many bits are forced to 0 and how many remain free.
-    """
     st.subheader("🎯 SHA-256 Target Threshold (256-bit space)")
 
     leading_zeros = count_leading_zero_bits(block["id"])
     free_bits     = 256 - leading_zeros
 
-    # Horizontal stacked bar: zero bits (red) vs free bits (green)
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=[leading_zeros],
@@ -143,34 +122,26 @@ def _render_256bit_visual(block: dict) -> None:
 
 
 def _render_interblock_times(blocks: list[dict]) -> None:
-    """
-    Section 3 — Distribution of inter-block times.
-    Expected distribution: Exponential(λ = 1/600 s⁻¹) — Poisson process.
-    We plot the empirical histogram and overlay the theoretical curve.
-    """
     st.subheader("⏱️ Inter-Block Time Distribution")
 
     timestamps = sorted([b["timestamp"] for b in blocks])
-    deltas     = np.diff(timestamps)   # seconds between consecutive blocks
+    deltas     = np.diff(timestamps)
 
     if len(deltas) < 5:
         st.warning("Not enough blocks to plot distribution.")
         return
 
     mean_delta = float(np.mean(deltas))
-    lam        = 1.0 / BLOCK_TIME_TARGET   # theoretical λ = 1/600
+    lam        = 1.0 / BLOCK_TIME_TARGET
 
-    # Theoretical exponential PDF over a smooth range
     x_theory = np.linspace(0, max(deltas) * 1.1, 300)
     y_theory = lam * np.exp(-lam * x_theory)
-    # Scale to match histogram area (bin_width × n_samples)
     n_bins    = 20
     bin_width = (max(deltas) - min(deltas)) / n_bins
     y_theory_scaled = y_theory * len(deltas) * bin_width
 
     fig = go.Figure()
 
-    # Empirical histogram
     fig.add_trace(go.Histogram(
         x=deltas,
         nbinsx=n_bins,
@@ -179,7 +150,6 @@ def _render_interblock_times(blocks: list[dict]) -> None:
         opacity=0.7,
     ))
 
-    # Theoretical exponential curve
     fig.add_trace(go.Scatter(
         x=x_theory,
         y=y_theory_scaled,
@@ -188,7 +158,6 @@ def _render_interblock_times(blocks: list[dict]) -> None:
         line=dict(color="#f97316", width=2, dash="dash"),
     ))
 
-    # Mark target (600 s)
     fig.add_vline(
         x=BLOCK_TIME_TARGET,
         line_dash="dot",
@@ -214,13 +183,6 @@ def _render_interblock_times(blocks: list[dict]) -> None:
 
 
 def _render_nonce_distribution(blocks: list[dict]) -> None:
-    """
-    Section 4 — Nonce distribution across recent blocks.
-    Nonces live in [0, 2^32). If mining were purely random,
-    we'd expect a uniform distribution — deviations reveal miner strategies.
-    The PDF (C5) explicitly cites nonce distribution as an example of
-    research that goes beyond the course notes.
-    """
     st.subheader("🎲 Nonce Distribution")
 
     nonces  = [b["nonce"] for b in blocks]
@@ -229,7 +191,6 @@ def _render_nonce_distribution(blocks: list[dict]) -> None:
     col1, col2 = st.columns(2)
 
     with col1:
-        # Scatter: nonce value per block height
         fig_scatter = go.Figure(go.Scatter(
             x=heights,
             y=nonces,
@@ -253,7 +214,6 @@ def _render_nonce_distribution(blocks: list[dict]) -> None:
         st.plotly_chart(fig_scatter, use_container_width=True)
 
     with col2:
-        # Histogram of nonce values
         fig_hist = go.Figure(go.Histogram(
             x=nonces,
             nbinsx=16,
@@ -278,32 +238,22 @@ def _render_nonce_distribution(blocks: list[dict]) -> None:
 
 
 def _render_next_adjustment(block: dict, blocks: list[dict]) -> None:
-    """
-    Section 5 — Estimated time and ratio of the next difficulty adjustment.
-    Adjustment occurs every 2016 blocks. Formula from Section 6.1 of notes:
-    new_difficulty = old_difficulty × (actual_time / expected_time)
-    where expected_time = 2016 × 600 = 1,209,600 seconds (2 weeks).
-    """
     st.subheader("📅 Next Difficulty Adjustment")
 
     height           = block["height"]
     blocks_since_adj = height % ADJUSTMENT_PERIOD
     blocks_remaining = ADJUSTMENT_PERIOD - blocks_since_adj
 
-    # Average block time from recent blocks
-    timestamps   = sorted([b["timestamp"] for b in blocks])
-    deltas       = np.diff(timestamps)
+    timestamps    = sorted([b["timestamp"] for b in blocks])
+    deltas        = np.diff(timestamps)
     avg_blocktime = float(np.mean(deltas)) if len(deltas) > 0 else BLOCK_TIME_TARGET
 
-    # Estimated seconds until next adjustment
     eta_seconds = blocks_remaining * avg_blocktime
     eta_hours   = eta_seconds / 3600
     eta_days    = eta_hours / 24
 
-    # Estimated adjustment ratio
-    # actual_period_time ≈ avg_blocktime × 2016 (projected)
     projected_period = avg_blocktime * ADJUSTMENT_PERIOD
-    expected_period  = BLOCK_TIME_TARGET * ADJUSTMENT_PERIOD   # 1,209,600 s
+    expected_period  = BLOCK_TIME_TARGET * ADJUSTMENT_PERIOD
     adj_ratio        = projected_period / expected_period
     adj_pct          = (adj_ratio - 1) * 100
 
@@ -322,7 +272,6 @@ def _render_next_adjustment(block: dict, blocks: list[dict]) -> None:
             f"(target is {BLOCK_TIME_TARGET} s)"
         )
 
-    # Progress bar for current period
     progress = blocks_since_adj / ADJUSTMENT_PERIOD
     st.progress(progress, text=f"Period progress: {blocks_since_adj}/{ADJUSTMENT_PERIOD} blocks ({progress*100:.1f}%)")
 
@@ -330,18 +279,15 @@ def _render_next_adjustment(block: dict, blocks: list[dict]) -> None:
 # ── Main render ────────────────────────────────────────────────────────────────
 
 def render() -> None:
-    """Render the M1 - Proof of Work Monitor tab."""
     st.header("M1 — Proof of Work Monitor")
     st.caption("Live Bitcoin mining metrics · auto-refreshes every 60 seconds")
 
-    # ── Auto-refresh control ───────────────────────────────────────────────────
     col_refresh, col_btn = st.columns([3, 1])
     with col_refresh:
         auto_refresh = st.toggle("Auto-refresh (60 s)", value=True, key="m1_auto_refresh")
     with col_btn:
         manual = st.button("🔄 Refresh now", key="m1_manual_refresh")
 
-    # ── Data loading ───────────────────────────────────────────────────────────
     @st.cache_data(ttl=60, show_spinner=False)
     def load_data():
         block  = get_latest_block()
@@ -358,7 +304,6 @@ def render() -> None:
             st.error(f"⚠️ Could not fetch data: {exc}")
             return
 
-    # ── Render sections ────────────────────────────────────────────────────────
     _render_live_metrics(block)
     st.divider()
     _render_256bit_visual(block)
@@ -369,7 +314,9 @@ def render() -> None:
     st.divider()
     _render_next_adjustment(block, blocks)
 
-    # ── Auto-refresh loop ──────────────────────────────────────────────────────
+    # ── Auto-refresh via JavaScript (no bloquea otros tabs) ───────────────────
     if auto_refresh:
-        time.sleep(60)
-        st.rerun()
+        components.html(
+            "<script>setTimeout(function(){window.location.reload();}, 60000);</script>",
+            height=0,
+        )
