@@ -18,21 +18,21 @@ Use one of these values: `Not started`, `In progress`, `Done`
 | Module | What it should include | Status |
 |---|---|---|
 | M1 | Proof of Work Monitor | Done |
-| M2 | Block Header Analyzer | In progress |
-| M3 | Difficulty History | Not started |
+| M2 | Block Header Analyzer | Done |
+| M3 | Difficulty History | In progress |
 | M4 | AI Component | Not started |
 
 ## Current Progress
 
 - M1 fully implemented: live difficulty, estimated hash rate, leading zero bits, 256-bit target threshold visual, inter-block time histogram with theoretical exponential curve, nonce distribution across last 50 blocks, and next difficulty adjustment estimator.
+- M2 fully implemented: 80-byte header parsed in little-endian, all 6 fields displayed, SHA256(SHA256(header)) verified locally with hashlib, byte map visualization, hash vs target 256-bit comparison.
 - API client (`api/blockchain_client.py`) refactored into reusable functions used by all modules.
-- Auto-refresh every 60 seconds implemented in M1 via `st.rerun()`.
-- Connected to Mempool.space API with paginated block fetching (up to 50 blocks).
+- Auto-refresh every 60 seconds implemented in M1 via JavaScript injection.
 - AI approach confirmed: Anomaly Detector for M4, Difficulty Predictor for M7.
 
 ## Next Step
 
-- Complete M2: Block Header Analyzer with SHA-256 double-hash local verification using `hashlib`.
+- Complete M3: Difficulty History with adjustment period chart and block time ratio visualization.
 
 ## Main Problem or Blocker
 
@@ -40,14 +40,14 @@ Use one of these values: `Not started`, `In progress`, `Done`
 
 ## How to Run
 
-​```bash
+```bash
 pip install -r requirements.txt
 streamlit run app.py
-​```
+```
 
 ## Project Structure
 
-​```text
+```text
 tarea-blockhain/
 |-- README.md
 |-- requirements.txt
@@ -60,4 +60,4 @@ tarea-blockhain/
     |-- m2_block_header.py
     |-- m3_difficulty_history.py
     `-- m4_ai_component.py
-​```
+```
