@@ -61,3 +61,21 @@ tarea-blockhain/
     |-- m3_difficulty_history.py
     `-- m4_ai_component.py
 ```
+
+<!-- student-repo-auditor:teacher-feedback:start -->
+## Teacher Feedback
+
+### Kick-off Review
+
+Review time: 2026-04-29 20:44 CEST
+Status: Green
+
+Strength:
+- I can see the dashboard structure integrating the checkpoint modules.
+
+Improve now:
+- M3 still needs a clearer difficulty-history implementation with charting and adjustment evidence.
+
+Next step:
+- Add a real difficulty-history chart and connect it to adjustment-period evidence.
+<!-- student-repo-auditor:teacher-feedback:end -->
