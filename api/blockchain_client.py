@@ -1,12 +1,11 @@
 """
 Bitcoin API client for the CryptoChain Analyzer Dashboard.
-Uses Mempool.space and Blockchain.info (no API key required).
+Uses Mempool.space (no API key required).
 """
 
 import requests
 
-BASE_MEMPOOL    = "https://mempool.space/api"
-BASE_BLOCKCHAIN = "https://blockchain.info"
+BASE_MEMPOOL = "https://mempool.space/api"
 TIMEOUT = 10  # seconds
 
 
@@ -70,29 +69,34 @@ def get_block_header_hex(block_hash: str) -> str:
 def get_difficulty_history(n_points: int = 100) -> list[dict]:
     """
     Return difficulty over time as a list of {x: timestamp, y: difficulty}.
-    Source: Blockchain.info charts API (no key needed).
+    Source: Mempool.space difficulty-adjustments endpoint.
     """
-    if n_points <= 30:
-        timespan = "30days"
-    elif n_points <= 90:
-        timespan = "3months"
-    elif n_points <= 180:
-        timespan = "6months"
-    else:
-        timespan = "1year"
+    data = _get(f"{BASE_MEMPOOL}/v1/mining/difficulty-adjustments")
 
-    url = (
-        f"{BASE_BLOCKCHAIN}/charts/difficulty"
-        f"?format=json&timespan={timespan}&sampled=true"
-    )
-    data = _get(url)
-    return data.get("values", [])
+    if not isinstance(data, list):
+        return []
+
+    values = []
+    for item in data:
+        try:
+            if isinstance(item, (list, tuple)) and len(item) >= 3:
+                values.append({"x": int(item[0]), "y": float(item[2])})
+            elif isinstance(item, dict):
+                ts   = item.get("time") or item.get("timestamp")
+                diff = item.get("difficulty")
+                if ts and diff:
+                    values.append({"x": int(ts), "y": float(diff)})
+        except Exception:
+            continue
+
+    values.sort(key=lambda v: v["x"])
+    return values[-n_points:]
 
 
-def get_difficulty_adjustments() -> list[dict]:
+def get_difficulty_adjustments() -> list:
     """
     Return the last difficulty adjustment periods from Mempool.space.
-    Each item has: time, height, difficulty, adjustment (ratio vs previous).
+    Each item is an array: [timestamp, height, difficulty, adjustment_ratio].
     Used in M3 to mark adjustment events on the chart.
     """
     return _get(f"{BASE_MEMPOOL}/v1/mining/difficulty-adjustments")
