@@ -73,5 +73,10 @@ Improve now:
 - M3 still needs a clearer difficulty-history implementation with charting and adjustment evidence.
 Next step:
 - Add a real difficulty-history chart and connect it to adjustment-period evidence.
-Status: Implemented ✅ — M3 now includes a full historical difficulty chart with 455 adjustment markers, block time ratio per period, and the Section 6.1 formula applied with predicted vs actual difficulty values.
+
+### Student Response
+Feedback implemented on 2026-04-30:
+- M3 now includes a full historical difficulty chart with 455 adjustment event markers.
+- Block time ratio per adjustment period added, directly addressing the adjustment-period evidence requested.
+- Section 6.1 formula applied with predicted vs actual difficulty values for each period.
 <!-- student-repo-auditor:teacher-feedback:end -->
