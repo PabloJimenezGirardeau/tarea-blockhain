@@ -19,20 +19,20 @@ Use one of these values: `Not started`, `In progress`, `Done`
 |---|---|---|
 | M1 | Proof of Work Monitor | Done |
 | M2 | Block Header Analyzer | Done |
-| M3 | Difficulty History | In progress |
-| M4 | AI Component | Not started |
+| M3 | Difficulty History | Done |
+| M4 | AI Component | In progress |
 
 ## Current Progress
 
 - M1 fully implemented: live difficulty, estimated hash rate, leading zero bits, 256-bit target threshold visual, inter-block time histogram with theoretical exponential curve, nonce distribution across last 50 blocks, and next difficulty adjustment estimator.
 - M2 fully implemented: 80-byte header parsed in little-endian, all 6 fields displayed, SHA256(SHA256(header)) verified locally with hashlib, byte map visualization, hash vs target 256-bit comparison.
-- API client (`api/blockchain_client.py`) refactored into reusable functions used by all modules.
-- Auto-refresh every 60 seconds implemented in M1 via JavaScript injection.
-- AI approach confirmed: Anomaly Detector for M4, Difficulty Predictor for M7.
+- M3 fully implemented: historical difficulty chart with 455 adjustment event markers, block time ratio per period, Section 6.1 adjustment formula with predicted vs actual table, period summary stats. Largest drop identified: -27.9% on 2021-07-03 (China mining ban).
+- Teacher feedback from kick-off review addressed: M3 now includes a full difficulty-history chart and clear adjustment-period evidence with ratios and formula.
+- API client (`api/blockchain_client.py`) refactored into reusable functions, migrated fully to Mempool.space.
 
 ## Next Step
 
-- Complete M3: Difficulty History with adjustment period chart and block time ratio visualization.
+- Implement M4: Anomaly Detector on inter-block time distribution using exponential baseline.
 
 ## Main Problem or Blocker
 
@@ -64,18 +64,14 @@ tarea-blockhain/
 
 <!-- student-repo-auditor:teacher-feedback:start -->
 ## Teacher Feedback
-
 ### Kick-off Review
-
 Review time: 2026-04-29 20:44 CEST
 Status: Green
-
 Strength:
 - I can see the dashboard structure integrating the checkpoint modules.
-
 Improve now:
 - M3 still needs a clearer difficulty-history implementation with charting and adjustment evidence.
-
 Next step:
 - Add a real difficulty-history chart and connect it to adjustment-period evidence.
+Status: Implemented ✅ — M3 now includes a full historical difficulty chart with 455 adjustment markers, block time ratio per period, and the Section 6.1 formula applied with predicted vs actual difficulty values.
 <!-- student-repo-auditor:teacher-feedback:end -->
