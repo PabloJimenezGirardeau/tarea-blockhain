@@ -20,19 +20,20 @@ Use one of these values: `Not started`, `In progress`, `Done`
 | M1 | Proof of Work Monitor | Done |
 | M2 | Block Header Analyzer | Done |
 | M3 | Difficulty History | Done |
-| M4 | AI Component | In progress |
+| M4 | AI Component | Done |
 
 ## Current Progress
 
 - M1 fully implemented: live difficulty, estimated hash rate, leading zero bits, 256-bit target threshold visual, inter-block time histogram with theoretical exponential curve, nonce distribution across last 50 blocks, and next difficulty adjustment estimator.
 - M2 fully implemented: 80-byte header parsed in little-endian, all 6 fields displayed, SHA256(SHA256(header)) verified locally with hashlib, byte map visualization, hash vs target 256-bit comparison.
 - M3 fully implemented: historical difficulty chart with 455 adjustment event markers, block time ratio per period, Section 6.1 adjustment formula with predicted vs actual table, period summary stats. Largest drop identified: -27.9% on 2021-07-03 (China mining ban).
-- Teacher feedback from kick-off review addressed: M3 now includes a full difficulty-history chart and clear adjustment-period evidence with ratios and formula.
-- API client (`api/blockchain_client.py`) refactored into reusable functions, migrated fully to Mempool.space.
+- M4 fully implemented: anomaly detector on inter-block times using exponential distribution baseline, MLE lambda estimation, rolling window adaptive detection, KS test evaluation, fast/slow anomaly classification.
+- All 4 required modules complete. API client migrated fully to Mempool.space.
 
 ## Next Step
 
-- Implement M4: Anomaly Detector on inter-block time distribution using exponential baseline.
+- Write final report (PDF, 2-3 pages) and add to repository before deadline.
+- Consider implementing M7: Difficulty Predictor as optional module.
 
 ## Main Problem or Blocker
 
@@ -73,7 +74,6 @@ Improve now:
 - M3 still needs a clearer difficulty-history implementation with charting and adjustment evidence.
 Next step:
 - Add a real difficulty-history chart and connect it to adjustment-period evidence.
-
 ### Student Response
 Feedback implemented on 2026-04-30:
 - M3 now includes a full historical difficulty chart with 455 adjustment event markers.
