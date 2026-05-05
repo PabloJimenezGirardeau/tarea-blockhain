@@ -20,7 +20,8 @@ Use one of these values: `Not started`, `In progress`, `Done`
 | M1 | Proof of Work Monitor | Done |
 | M2 | Block Header Analyzer | Done |
 | M3 | Difficulty History | Done |
-| M4 | AI Component | In Progress |
+| M4 | AI Component | Done |
+| M7 | Difficulty Predictor (optional) | Done |
 
 ## Current Progress
 
@@ -28,12 +29,14 @@ Use one of these values: `Not started`, `In progress`, `Done`
 - M2 fully implemented: 80-byte header parsed in little-endian, all 6 fields displayed, SHA256(SHA256(header)) verified locally with hashlib, byte map visualization, hash vs target 256-bit comparison.
 - M3 fully implemented: historical difficulty chart with 455 adjustment event markers, block time ratio per period, Section 6.1 adjustment formula with predicted vs actual table, period summary stats. Largest drop identified: -27.9% on 2021-07-03 (China mining ban).
 - M4 fully implemented: anomaly detector on inter-block times using exponential distribution baseline, MLE lambda estimation, rolling window adaptive detection, KS test evaluation, fast/slow anomaly classification.
-- All 4 required modules complete. API client migrated fully to Mempool.space.
+- M7 fully implemented: difficulty predictor using linear regression with temporal features (lag1, ratio, MA3, time index), temporal train/test split (80/20), 90% confidence intervals, R²=0.9841, MAPE=3.49%, M4 vs M7 comparison table.
+- All required modules complete. Two optional AI modules implemented. API client migrated fully to Mempool.space.
 
 ## Next Step
 
+- Implement M5: Merkle Proof Verifier.
+- Implement M6: Security Score (51% attack cost).
 - Write final report (PDF, 2-3 pages) and add to repository before deadline.
-- Consider implementing M7: Difficulty Predictor as optional module.
 
 ## Main Problem or Blocker
 
@@ -60,7 +63,8 @@ tarea-blockhain/
     |-- m1_pow_monitor.py
     |-- m2_block_header.py
     |-- m3_difficulty_history.py
-    `-- m4_ai_component.py
+    |-- m4_ai_component.py
+    `-- m7_difficulty_predictor.py
 ```
 
 <!-- student-repo-auditor:teacher-feedback:start -->
