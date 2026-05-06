@@ -100,3 +100,8 @@ def get_difficulty_adjustments() -> list:
     Used in M3 to mark adjustment events on the chart.
     """
     return _get(f"{BASE_MEMPOOL}/v1/mining/difficulty-adjustments")
+
+
+def get_block_txids(block_hash: str) -> list[str]:
+    """Return all transaction IDs for a given block hash."""
+    return _get(f"{BASE_MEMPOOL}/block/{block_hash}/txids")
