@@ -8,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  /* ── Reset & Base ──────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -30,7 +29,6 @@
     --text2:     #8888aa;
     --text3:     #4a4a6a;
     --mono:      'IBM Plex Mono', monospace;
-    --sans:      'IBM Plex Sans', sans-serif;
   }
 
   html, body {
@@ -43,23 +41,16 @@
     overflow-x: hidden;
   }
 
-  /* Scanline overlay */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.03) 2px,
-      rgba(0,0,0,0.03) 4px
-    );
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
     pointer-events: none;
     z-index: 9999;
   }
 
-  /* ── Top Bar ────────────────────────────────────────────────────── */
+  /* ── Top Bar ── */
   #topbar {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -84,27 +75,10 @@
     border-right: 1px solid var(--border2);
   }
 
-  .ticker-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-
-  .ticker-label {
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 10px;
-  }
-
-  .ticker-value {
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  .ticker-value.up   { color: var(--green); }
+  .ticker-item { display: flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; }
+  .ticker-label { color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+  .ticker-value { color: var(--text); font-weight: 500; }
+  .ticker-value.up { color: var(--green); }
   .ticker-value.down { color: var(--red); }
 
   .live-dot {
@@ -115,20 +89,12 @@
     flex-shrink: 0;
   }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.4; transform: scale(0.8); }
-  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
 
   #topbar .spacer { flex: 1; }
+  #topbar .clock { font-size: 11px; color: var(--text2); letter-spacing: 0.05em; }
 
-  #topbar .clock {
-    font-size: 11px;
-    color: var(--text2);
-    letter-spacing: 0.05em;
-  }
-
-  /* ── Navigation ─────────────────────────────────────────────────── */
+  /* ── Nav ── */
   #nav {
     position: fixed;
     top: 44px; left: 0; right: 0;
@@ -143,444 +109,252 @@
   }
 
   .nav-tab {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: flex; align-items: center; gap: 6px;
     padding: 0 14px;
-    font-size: 11px;
-    font-weight: 500;
+    font-size: 11px; font-weight: 500;
     color: var(--text3);
-    cursor: pointer;
-    border: none;
-    background: transparent;
+    cursor: pointer; border: none; background: transparent;
     font-family: var(--mono);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    position: relative;
-    transition: color 0.15s;
-    white-space: nowrap;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    position: relative; transition: color 0.15s; white-space: nowrap;
   }
-
   .nav-tab:hover { color: var(--text2); }
-
-  .nav-tab.active {
-    color: var(--blue);
-  }
-
+  .nav-tab.active { color: var(--blue); }
   .nav-tab.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--blue);
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px; background: var(--blue);
   }
-
   .nav-badge {
-    font-size: 9px;
-    padding: 1px 5px;
-    background: var(--blue-dim);
-    color: var(--blue);
-    border: 1px solid rgba(0,212,255,0.2);
-    letter-spacing: 0;
+    font-size: 9px; padding: 1px 5px;
+    background: var(--blue-dim); color: var(--blue);
+    border: 1px solid rgba(0,212,255,0.2); letter-spacing: 0;
   }
 
-  /* ── Main Content ───────────────────────────────────────────────── */
-  #content {
-    margin-top: 82px;
-    padding: 20px;
-    max-width: 1600px;
-    margin-left: auto;
-    margin-right: auto;
-  }
+  /* ── Content ── */
+  #content { margin-top: 82px; padding: 20px; max-width: 1600px; margin-left: auto; margin-right: auto; }
 
-  /* ── Panels ─────────────────────────────────────────────────────── */
-  .panel {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 16px 20px;
-    margin-bottom: 16px;
-  }
-
+  /* ── Panel ── */
+  .panel { background: var(--bg2); border: 1px solid var(--border); padding: 16px 20px; margin-bottom: 16px; }
   .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
   }
-
   .panel-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 11px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    display: flex; align-items: center; gap: 8px;
   }
-
   .panel-title .accent { color: var(--blue); }
 
-  /* ── Metric Grid ────────────────────────────────────────────────── */
+  /* ── Metric grid ── */
   .metric-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px; background: var(--border); border: 1px solid var(--border);
   }
-
-  .metric-cell {
-    background: var(--bg2);
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .metric-label {
-    font-size: 10px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .metric-value {
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-  }
-
+  .metric-cell { background: var(--bg2); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .metric-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .metric-value { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.1; font-variant-numeric: tabular-nums; }
   .metric-value.blue   { color: var(--blue); }
   .metric-value.green  { color: var(--green); }
   .metric-value.orange { color: var(--orange); }
   .metric-value.red    { color: var(--red); }
+  .metric-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
 
-  .metric-sub {
-    font-size: 10px;
-    color: var(--text3);
-    margin-top: 2px;
+  /* ── Sparkline ── */
+  .sparkline-wrap { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-top: 6px; }
+  .spark-bar {
+    flex: 1; background: rgba(0,212,255,0.3);
+    border-top: 1px solid var(--blue);
+    min-height: 2px; transition: height 0.3s ease;
   }
 
-  /* ── 256-bit Bar ────────────────────────────────────────────────── */
-  .bit-bar-container {
-    margin: 8px 0;
+  /* ── Countdown ── */
+  .countdown-display {
+    font-size: 28px; font-weight: 600; color: var(--blue);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
   }
 
-  .bit-bar-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--text3);
-    margin-bottom: 6px;
-  }
-
-  .bit-bar {
-    height: 32px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    display: flex;
-    overflow: hidden;
-    position: relative;
-  }
-
+  /* ── 256-bit bar ── */
+  .bit-bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); margin-bottom: 6px; }
+  .bit-bar { height: 32px; background: var(--bg3); border: 1px solid var(--border2); display: flex; overflow: hidden; }
   .bit-bar-zero {
     background: linear-gradient(90deg, #ff4466, #ff6688);
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    white-space: nowrap;
-    padding: 0 8px;
-    flex-shrink: 0;
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: white;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    white-space: nowrap; padding: 0 8px; flex-shrink: 0;
   }
-
   .bit-bar-free {
     background: linear-gradient(90deg, #00aa55, #00ff88);
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(0,0,0,0.7);
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    flex: 1;
-    padding: 0 8px;
-    white-space: nowrap;
+    height: 100%; display: flex; align-items: center; justify-content: flex-end;
+    font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.7);
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    flex: 1; padding: 0 8px; white-space: nowrap;
   }
-
-  /* ── Charts ─────────────────────────────────────────────────────── */
-  .chart-container {
-    position: relative;
-    height: 220px;
-    width: 100%;
-  }
-
-  .chart-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  /* ── Adjustment Bar ─────────────────────────────────────────────── */
-  .adj-bar {
-    height: 6px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    overflow: hidden;
-    margin: 8px 0 4px;
-  }
-
-  .adj-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--blue), #0088ff);
-    transition: width 1s ease;
-  }
-
-  /* ── Hash display ───────────────────────────────────────────────── */
   .hash-display {
-    font-size: 10px;
-    color: var(--text3);
-    word-break: break-all;
-    line-height: 1.6;
-    padding: 8px 10px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    margin-top: 4px;
+    font-size: 10px; color: var(--text3); word-break: break-all;
+    line-height: 1.6; padding: 8px 10px;
+    background: var(--bg3); border: 1px solid var(--border); margin-top: 4px;
   }
-
   .hash-display .zeros { color: var(--red); font-weight: 600; }
   .hash-display .rest  { color: var(--text2); }
 
-  /* ── Loading ────────────────────────────────────────────────────── */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 120px;
-    color: var(--text3);
-    font-size: 11px;
-    gap: 8px;
-  }
+  /* ── Adj bar ── */
+  .adj-bar { height: 6px; background: var(--bg3); border: 1px solid var(--border2); overflow: hidden; margin: 8px 0 4px; }
+  .adj-bar-fill { height: 100%; background: linear-gradient(90deg, var(--blue), #0088ff); transition: width 1s ease; }
 
-  .spinner {
-    width: 16px; height: 16px;
-    border: 1.5px solid var(--border2);
-    border-top-color: var(--blue);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
+  /* ── Charts ── */
+  .chart-container { position: relative; height: 220px; width: 100%; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .data-table th {
+    text-align: left; padding: 6px 10px;
+    font-size: 10px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border2);
+    font-weight: 500;
+  }
+  .data-table td {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    color: var(--text2); font-variant-numeric: tabular-nums;
+  }
+  .data-table tr:hover td { background: var(--bg3); }
+  .data-table td.mono { font-family: var(--mono); }
+  .data-table td.blue { color: var(--blue); }
+  .data-table td.green { color: var(--green); }
+  .data-table td.orange { color: var(--orange); }
+  .data-table td.red { color: var(--red); }
+  .delta-badge {
+    display: inline-block; padding: 1px 6px;
+    font-size: 10px; font-weight: 600;
+  }
+  .delta-badge.fast { background: var(--orange-dim); color: var(--orange); }
+  .delta-badge.slow { background: var(--red-dim); color: var(--red); }
+  .delta-badge.ok   { background: var(--green-dim); color: var(--green); }
+
+  /* ── Loading ── */
+  .loading { display: flex; align-items: center; justify-content: center; height: 80px; color: var(--text3); font-size: 11px; gap: 8px; }
+  .spinner { width: 14px; height: 14px; border: 1.5px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Refresh button ─────────────────────────────────────────────── */
+  /* ── Btn ── */
   .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    font-size: 10px;
-    font-family: var(--mono);
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border: 1px solid var(--border2);
-    background: transparent;
-    color: var(--text2);
-    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; font-size: 10px; font-family: var(--mono);
+    font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; border: 1px solid var(--border2);
+    background: transparent; color: var(--text2); transition: all 0.15s;
   }
+  .btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+  .btn.primary { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
 
-  .btn:hover {
-    border-color: var(--blue);
-    color: var(--blue);
-    background: var(--blue-dim);
-  }
-
-  .btn.primary {
-    border-color: var(--blue);
-    color: var(--blue);
-    background: var(--blue-dim);
-  }
-
-  /* ── Tab pages ──────────────────────────────────────────────────── */
+  /* ── Tab pages ── */
   .tab-page { display: none; }
   .tab-page.active { display: block; }
 
-  /* ── Page header ────────────────────────────────────────────────── */
+  /* ── Page header ── */
   .page-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
   }
+  .page-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.15em; }
+  .page-title span { display: block; font-size: 22px; color: var(--text); font-weight: 600; letter-spacing: -0.01em; margin-top: 2px; text-transform: none; }
 
-  .page-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-  }
-
-  .page-title span {
-    display: block;
-    font-size: 22px;
-    color: var(--text);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin-top: 2px;
-    text-transform: none;
-  }
-
-  /* ── Counter animation ──────────────────────────────────────────── */
-  @keyframes countUp {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes countUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   .animated { animation: countUp 0.4s ease forwards; }
 
-  /* ── Scrollbar ──────────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border2); }
 
-  /* ── Status badge ───────────────────────────────────────────────── */
   .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 600;
   }
+  .status-badge.ok    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+  .status-badge.warn  { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,140,0,0.25); }
+  .status-badge.alert { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,68,102,0.25); }
 
-  .status-badge.ok     { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
-  .status-badge.warn   { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,140,0,0.25); }
-  .status-badge.alert  { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,68,102,0.25); }
-
-  /* Coming soon placeholder */
   .coming-soon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-    color: var(--text3);
-    gap: 10px;
-    font-size: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 300px; color: var(--text3); gap: 10px; font-size: 12px;
     border: 1px dashed var(--border2);
   }
-
   .coming-soon .icon { font-size: 32px; opacity: 0.4; }
+
+  /* New block flash */
+  @keyframes newBlockFlash {
+    0%   { background: rgba(0,255,136,0.15); }
+    100% { background: transparent; }
+  }
+  .new-block-flash { animation: newBlockFlash 1.5s ease forwards; }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════════════
-     TOP BAR
-═══════════════════════════════════════════════════════════════════ -->
+<!-- TOP BAR -->
 <div id="topbar">
   <div class="logo">⬡ CryptoChain Analyzer</div>
-
   <div class="ticker-item">
     <div class="live-dot"></div>
     <span class="ticker-label">BTC</span>
     <span class="ticker-value" id="tb-btc-price">—</span>
   </div>
-
   <div class="ticker-item">
     <span class="ticker-label">Block</span>
     <span class="ticker-value" id="tb-height">—</span>
   </div>
-
   <div class="ticker-item">
     <span class="ticker-label">Hashrate</span>
     <span class="ticker-value" id="tb-hashrate">—</span>
   </div>
-
   <div class="ticker-item">
     <span class="ticker-label">Difficulty</span>
     <span class="ticker-value" id="tb-difficulty">—</span>
   </div>
-
   <div class="ticker-item">
     <span class="ticker-label">Mempool</span>
     <span class="ticker-value" id="tb-mempool">—</span>
   </div>
-
   <div class="spacer"></div>
   <div class="clock" id="clock">—</div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════
-     NAVIGATION
-═══════════════════════════════════════════════════════════════════ -->
+<!-- NAV -->
 <nav id="nav">
-  <button class="nav-tab active" onclick="switchTab('m1')">
-    M1 <span class="nav-badge">PoW</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m2')">
-    M2 <span class="nav-badge">Header</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m3')">
-    M3 <span class="nav-badge">Difficulty</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m4')">
-    M4 <span class="nav-badge">AI Anomaly</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m7')">
-    M7 <span class="nav-badge">AI Predict</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m5')">
-    M5 <span class="nav-badge">Merkle</span>
-  </button>
-  <button class="nav-tab" onclick="switchTab('m6')">
-    M6 <span class="nav-badge">Security</span>
-  </button>
+  <button class="nav-tab active" onclick="switchTab('m1',this)">M1 <span class="nav-badge">PoW</span></button>
+  <button class="nav-tab" onclick="switchTab('m2',this)">M2 <span class="nav-badge">Header</span></button>
+  <button class="nav-tab" onclick="switchTab('m3',this)">M3 <span class="nav-badge">Difficulty</span></button>
+  <button class="nav-tab" onclick="switchTab('m4',this)">M4 <span class="nav-badge">AI Anomaly</span></button>
+  <button class="nav-tab" onclick="switchTab('m7',this)">M7 <span class="nav-badge">AI Predict</span></button>
+  <button class="nav-tab" onclick="switchTab('m5',this)">M5 <span class="nav-badge">Merkle</span></button>
+  <button class="nav-tab" onclick="switchTab('m6',this)">M6 <span class="nav-badge">Security</span></button>
 </nav>
 
-<!-- ══════════════════════════════════════════════════════════════════
-     CONTENT
-═══════════════════════════════════════════════════════════════════ -->
+<!-- CONTENT -->
 <main id="content">
 
-  <!-- ── M1: Proof of Work Monitor ─────────────────────────────── -->
+  <!-- M1 -->
   <div id="tab-m1" class="tab-page active">
     <div class="page-header">
-      <div class="page-title">
-        Module 01
-        <span>Proof of Work Monitor</span>
-      </div>
+      <div class="page-title">Module 01 <span>Proof of Work Monitor</span></div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <span class="status-badge ok" id="m1-status">
-          <span class="live-dot"></span> LIVE
-        </span>
-        <button class="btn primary" onclick="loadM1()">↺ Refresh</button>
+        <span class="status-badge ok" id="m1-status"><span class="live-dot"></span> LIVE</span>
+        <button class="btn primary" onclick="loadM1(true)">↺ Refresh</button>
       </div>
     </div>
 
-    <!-- Live metrics -->
-    <div class="metric-grid" id="m1-metrics">
+    <!-- Metrics -->
+    <div class="metric-grid" id="m1-metrics-grid">
       <div class="metric-cell">
         <div class="metric-label">Difficulty</div>
         <div class="metric-value blue" id="m1-difficulty"><div class="loading"><div class="spinner"></div></div></div>
         <div class="metric-sub" id="m1-difficulty-sub">—</div>
+        <div class="sparkline-wrap" id="m1-sparkline" title="Last 10 difficulty adjustments"></div>
       </div>
       <div class="metric-cell">
         <div class="metric-label">Est. Hash Rate</div>
@@ -603,32 +377,35 @@
         <div class="metric-sub" id="m1-timestamp">—</div>
       </div>
       <div class="metric-cell">
-        <div class="metric-label">Next Adjustment</div>
-        <div class="metric-value blue" id="m1-adj-eta">—</div>
+        <div class="metric-label">Next Adjustment In</div>
+        <div class="countdown-display" id="m1-countdown">—</div>
         <div class="metric-sub" id="m1-adj-blocks">—</div>
       </div>
     </div>
 
-    <!-- 256-bit target bar -->
+    <!-- 256-bit bar -->
     <div class="panel" style="margin-top:16px;">
       <div class="panel-header">
         <div class="panel-title"><span class="accent">▸</span> SHA-256 Target Threshold — 256-bit space</div>
       </div>
       <div class="bit-bar-labels">
         <span>0</span>
-        <span id="bit-bar-label-zeros" style="color:var(--red)">— zero bits (must be 0)</span>
-        <span id="bit-bar-label-free" style="color:var(--green)">— free bits</span>
+        <span id="bit-bar-label-zeros" style="color:var(--red)">—</span>
+        <span id="bit-bar-label-free" style="color:var(--green)">—</span>
         <span>256</span>
       </div>
       <div class="bit-bar">
         <div class="bit-bar-zero" id="bit-zero-bar" style="width:0%">—</div>
         <div class="bit-bar-free" id="bit-free-bar">—</div>
       </div>
-      <div class="hash-display" id="m1-hash-display">Loading block hash...</div>
-      <div class="metric-sub" style="margin-top:8px;">A valid PoW hash must start with at least <span id="m1-zeros-inline" style="color:var(--red)">—</span> zero bits. Miners iterate the nonce until SHA256²(header) satisfies this constraint.</div>
+      <div class="hash-display" id="m1-hash-display">Loading...</div>
+      <div class="metric-sub" style="margin-top:8px;">
+        A valid PoW hash must start with at least <span id="m1-zeros-inline" style="color:var(--red)">—</span> zero bits.
+        Miners iterate the nonce until SHA256²(header) satisfies this constraint.
+      </div>
     </div>
 
-    <!-- Adjustment progress -->
+    <!-- Adjustment -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title"><span class="accent">▸</span> Difficulty Adjustment Period</div>
@@ -638,9 +415,7 @@
         <span>Period progress</span>
         <span id="m1-adj-progress-label">—</span>
       </div>
-      <div class="adj-bar">
-        <div class="adj-bar-fill" id="m1-adj-bar" style="width:0%"></div>
-      </div>
+      <div class="adj-bar"><div class="adj-bar-fill" id="m1-adj-bar" style="width:0%"></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);margin-top:12px;">
         <div style="background:var(--bg2);padding:10px 12px;">
           <div class="metric-label">Blocks remaining</div>
@@ -657,137 +432,124 @@
       </div>
     </div>
 
-    <!-- Charts row -->
+    <!-- Charts -->
     <div class="chart-row">
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title"><span class="accent">▸</span> Inter-Block Time Distribution</div>
           <span style="font-size:10px;color:var(--text3)">last 50 blocks · exp(λ=1/600) overlay</span>
         </div>
-        <div class="chart-container">
-          <canvas id="chart-interblock"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="chart-interblock"></canvas></div>
       </div>
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title"><span class="accent">▸</span> Nonce Distribution</div>
           <span style="font-size:10px;color:var(--text3)">last 50 blocks · range [0, 2³²]</span>
         </div>
-        <div class="chart-container">
-          <canvas id="chart-nonce"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="chart-nonce"></canvas></div>
       </div>
     </div>
+
+    <!-- Recent blocks table -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">▸</span> Recent Blocks</div>
+        <span style="font-size:10px;color:var(--text3)">last 10 blocks</span>
+      </div>
+      <table class="data-table" id="m1-blocks-table">
+        <thead>
+          <tr>
+            <th>Height</th>
+            <th>Time</th>
+            <th>Δ Time</th>
+            <th>Transactions</th>
+            <th>Nonce</th>
+            <th>Hash (truncated)</th>
+          </tr>
+        </thead>
+        <tbody id="m1-blocks-tbody">
+          <tr><td colspan="6"><div class="loading"><div class="spinner"></div> Loading...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- ── M2–M7 Placeholders ─────────────────────────────────────── -->
+  <!-- Placeholders -->
   <div id="tab-m2" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 02 <span>Block Header Analyzer</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 02 <span>Block Header Analyzer</span></div></div>
     <div class="coming-soon"><div class="icon">🧱</div><span>Coming next</span></div>
   </div>
-
   <div id="tab-m3" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 03 <span>Difficulty History</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 03 <span>Difficulty History</span></div></div>
     <div class="coming-soon"><div class="icon">📈</div><span>Coming next</span></div>
   </div>
-
   <div id="tab-m4" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 04 <span>AI — Anomaly Detector</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 04 <span>AI — Anomaly Detector</span></div></div>
     <div class="coming-soon"><div class="icon">🤖</div><span>Coming next</span></div>
   </div>
-
   <div id="tab-m7" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 07 <span>AI — Difficulty Predictor</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 07 <span>AI — Difficulty Predictor</span></div></div>
     <div class="coming-soon"><div class="icon">📊</div><span>Coming next</span></div>
   </div>
-
   <div id="tab-m5" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 05 <span>Merkle Proof Verifier</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 05 <span>Merkle Proof Verifier</span></div></div>
     <div class="coming-soon"><div class="icon">🌳</div><span>Coming next</span></div>
   </div>
-
   <div id="tab-m6" class="tab-page">
-    <div class="page-header">
-      <div class="page-title">Module 06 <span>Security Score — 51% Attack</span></div>
-    </div>
+    <div class="page-header"><div class="page-title">Module 06 <span>Security Score — 51% Attack</span></div></div>
     <div class="coming-soon"><div class="icon">🔒</div><span>Coming next</span></div>
   </div>
-
 </main>
 
 <script>
-// ══════════════════════════════════════════════════════════════════
-// CONSTANTS & STATE
-// ══════════════════════════════════════════════════════════════════
 const API = 'https://mempool.space/api';
 const ADJUSTMENT_PERIOD = 2016;
 const TARGET_BLOCK_TIME = 600;
 
 let chartInterblock = null;
-let chartNonce      = null;
-let m1Interval      = null;
+let chartNonce = null;
+let countdownInterval = null;
+let countdownEndTime = null;
+let lastBlockHeight = null;
 
-// ══════════════════════════════════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════════════════════════════════
-function switchTab(id) {
+// ── Navigation ──────────────────────────────────────────────────
+function switchTab(id, btn) {
   document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
-  event.currentTarget.classList.add('active');
+  btn.classList.add('active');
 }
 
-// ══════════════════════════════════════════════════════════════════
-// CLOCK
-// ══════════════════════════════════════════════════════════════════
+// ── Clock ───────────────────────────────────────────────────────
 function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent =
-    now.toUTCString().slice(5, 25) + ' UTC';
+  document.getElementById('clock').textContent = new Date().toUTCString().slice(5,25) + ' UTC';
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ══════════════════════════════════════════════════════════════════
-// UTILITIES
-// ══════════════════════════════════════════════════════════════════
-function fmt(n, decimals=0) {
-  if (n === null || n === undefined || isNaN(n)) return '—';
-  return Number(n).toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
+// ── Utils ────────────────────────────────────────────────────────
+function fmt(n, d=0) {
+  if (n===null||n===undefined||isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
 }
-
 function fmtCompact(n) {
-  if (n >= 1e18) return (n/1e18).toFixed(2) + ' EH/s';
-  if (n >= 1e15) return (n/1e15).toFixed(2) + ' PH/s';
-  if (n >= 1e12) return (n/1e12).toFixed(2) + ' TH/s';
-  return fmt(n) + ' H/s';
+  if (n>=1e18) return (n/1e18).toFixed(2)+' EH/s';
+  if (n>=1e15) return (n/1e15).toFixed(2)+' PH/s';
+  if (n>=1e12) return (n/1e12).toFixed(2)+' TH/s';
+  return fmt(n)+' H/s';
 }
-
-function countLeadingZeroBits(hexHash) {
-  const n = BigInt('0x' + hexHash);
-  if (n === 0n) return 256;
-  return 256 - n.toString(2).length;
+function fmtDuration(s) {
+  const d = Math.floor(s/86400);
+  const h = Math.floor((s%86400)/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = Math.floor(s%60);
+  if (d>0) return `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m`;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
 }
-
-function bitsToTarget(bits) {
-  const exp = (bits >> 24) & 0xff;
-  const mant = bits & 0x007fffff;
-  return mant * Math.pow(2, 8 * (exp - 3));
+function countLeadingZeroBits(hex) {
+  const n = BigInt('0x'+hex);
+  return n===0n ? 256 : 256-n.toString(2).length;
 }
-
 function animateValue(el, value) {
   el.classList.remove('animated');
   void el.offsetWidth;
@@ -795,246 +557,241 @@ function animateValue(el, value) {
   el.classList.add('animated');
 }
 
-// ══════════════════════════════════════════════════════════════════
-// TOP BAR — live ticker
-// ══════════════════════════════════════════════════════════════════
+// ── Top Bar ──────────────────────────────────────────────────────
 async function updateTopBar() {
   try {
     const [tipHash, mempoolInfo] = await Promise.all([
-      fetch(`${API}/blocks/tip/hash`).then(r => r.text()),
-      fetch(`${API}/mempool`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/blocks/tip/hash`).then(r=>r.text()),
+      fetch(`${API}/mempool`).then(r=>r.json()).catch(()=>null),
     ]);
+    const block = await fetch(`${API}/block/${tipHash.trim()}`).then(r=>r.json());
+    const hashrate = block.difficulty * Math.pow(2,32) / TARGET_BLOCK_TIME;
 
-    const block = await fetch(`${API}/block/${tipHash.trim()}`).then(r => r.json());
-
-    const hashrate = block.difficulty * Math.pow(2, 32) / TARGET_BLOCK_TIME;
-
-    document.getElementById('tb-height').textContent    = '#' + fmt(block.height);
-    document.getElementById('tb-hashrate').textContent  = fmtCompact(hashrate);
-    document.getElementById('tb-difficulty').textContent = fmt(block.difficulty / 1e12, 2) + ' T';
-
-    if (mempoolInfo) {
-      const mb = (mempoolInfo.vsize / 1e6).toFixed(1);
-      document.getElementById('tb-mempool').textContent = mb + ' MB';
+    // Flash if new block
+    if (lastBlockHeight && block.height > lastBlockHeight) {
+      document.getElementById('topbar').classList.add('new-block-flash');
+      setTimeout(()=>document.getElementById('topbar').classList.remove('new-block-flash'), 1500);
     }
+    lastBlockHeight = block.height;
 
-    // BTC price via mempool price API
+    document.getElementById('tb-height').textContent     = '#'+fmt(block.height);
+    document.getElementById('tb-hashrate').textContent   = fmtCompact(hashrate);
+    document.getElementById('tb-difficulty').textContent = fmt(block.difficulty/1e12,2)+' T';
+    if (mempoolInfo) document.getElementById('tb-mempool').textContent = (mempoolInfo.vsize/1e6).toFixed(1)+' MB';
+
     try {
-      const price = await fetch('https://mempool.space/api/v1/prices').then(r => r.json());
-      if (price && price.USD) {
-        const p = price.USD;
-        document.getElementById('tb-btc-price').textContent = '$' + fmt(p);
-      }
+      const price = await fetch('https://mempool.space/api/v1/prices').then(r=>r.json());
+      if (price&&price.USD) document.getElementById('tb-btc-price').textContent = '$'+fmt(price.USD);
     } catch(e) {}
-
-  } catch(e) {
-    console.warn('TopBar update failed:', e);
-  }
+  } catch(e) { console.warn('TopBar failed:',e); }
 }
 
-// ══════════════════════════════════════════════════════════════════
-// M1 — PROOF OF WORK MONITOR
-// ══════════════════════════════════════════════════════════════════
-async function loadM1() {
+// ── Fetch blocks ─────────────────────────────────────────────────
+async function fetchRecentBlocks(n) {
+  const tipHeight = await fetch(`${API}/blocks/tip/height`).then(r=>r.json());
+  let blocks = []; let height = tipHeight;
+  while (blocks.length < n) {
+    const batch = await fetch(`${API}/blocks/${height}`).then(r=>r.json());
+    if (!batch||!batch.length) break;
+    blocks = blocks.concat(batch);
+    height = batch[batch.length-1].height - 1;
+  }
+  return blocks.slice(0,n);
+}
+
+// ── M1 ────────────────────────────────────────────────────────────
+async function loadM1(forceRefresh=false) {
   try {
-    // Fetch latest block
-    const tipHash = await fetch(`${API}/blocks/tip/hash`).then(r => r.text());
-    const block   = await fetch(`${API}/block/${tipHash.trim()}`).then(r => r.json());
+    const [tipHash, blocks] = await Promise.all([
+      fetch(`${API}/blocks/tip/hash`).then(r=>r.text()),
+      fetchRecentBlocks(50),
+    ]);
+    const block = await fetch(`${API}/block/${tipHash.trim()}`).then(r=>r.json());
+    const adjData = await fetch(`${API}/v1/mining/difficulty-adjustments`).then(r=>r.json()).catch(()=>[]);
 
-    // Fetch recent blocks (paginated, ~50)
-    const blocks = await fetchRecentBlocks(50);
+    renderMetrics(block, blocks);
+    renderBitBar(block);
+    renderAdjustment(block, blocks);
+    renderCountdown(block, blocks);
+    renderCharts(blocks);
+    renderRecentBlocks(blocks);
+    renderSparkline(adjData);
 
-    renderM1Metrics(block);
-    renderM1BitBar(block);
-    renderM1Adjustment(block, blocks);
-    renderM1Charts(blocks);
-
+    document.getElementById('m1-status').innerHTML = '<span class="live-dot"></span> LIVE';
+    document.getElementById('m1-status').className = 'status-badge ok';
   } catch(e) {
-    console.error('M1 load failed:', e);
+    console.error('M1 failed:',e);
     document.getElementById('m1-status').className = 'status-badge alert';
     document.getElementById('m1-status').textContent = '⚠ ERROR';
   }
 }
 
-async function fetchRecentBlocks(n) {
-  const tipHeight = await fetch(`${API}/blocks/tip/height`).then(r => r.json());
-  let blocks = [];
-  let height = tipHeight;
+function renderMetrics(block, blocks) {
+  const hashrate = block.difficulty * Math.pow(2,32) / TARGET_BLOCK_TIME;
+  const zeros = countLeadingZeroBits(block.id);
+  const ts = new Date(block.timestamp*1000);
 
-  while (blocks.length < n) {
-    const batch = await fetch(`${API}/blocks/${height}`).then(r => r.json());
-    if (!batch || batch.length === 0) break;
-    blocks = blocks.concat(batch);
-    height = batch[batch.length - 1].height - 1;
-  }
-  return blocks.slice(0, n);
-}
-
-function renderM1Metrics(block) {
-  const hashrate = block.difficulty * Math.pow(2, 32) / TARGET_BLOCK_TIME;
-  const zeros    = countLeadingZeroBits(block.id);
-  const ts       = new Date(block.timestamp * 1000);
-
-  animateValue(document.getElementById('m1-difficulty'),    fmt(block.difficulty / 1e12, 2) + ' T');
-  animateValue(document.getElementById('m1-hashrate'),      fmtCompact(hashrate));
-  animateValue(document.getElementById('m1-zeros'),         zeros + ' / 256');
-  animateValue(document.getElementById('m1-height'),        '#' + fmt(block.height));
-  animateValue(document.getElementById('m1-txcount'),       fmt(block.tx_count));
+  animateValue(document.getElementById('m1-difficulty'), fmt(block.difficulty/1e12,2)+' T');
+  animateValue(document.getElementById('m1-hashrate'),   fmtCompact(hashrate));
+  animateValue(document.getElementById('m1-zeros'),      zeros+' / 256');
+  animateValue(document.getElementById('m1-height'),     '#'+fmt(block.height));
+  animateValue(document.getElementById('m1-txcount'),    fmt(block.tx_count));
   document.getElementById('m1-difficulty-sub').textContent = fmt(block.difficulty);
-  document.getElementById('m1-nonce').textContent          = 'nonce: ' + fmt(block.nonce);
-  document.getElementById('m1-timestamp').textContent      = ts.toUTCString().slice(5,22) + ' UTC';
+  document.getElementById('m1-nonce').textContent          = 'nonce: '+fmt(block.nonce);
+  document.getElementById('m1-timestamp').textContent      = ts.toUTCString().slice(5,22)+' UTC';
   document.getElementById('m1-zeros-inline').textContent   = zeros;
 }
 
-function renderM1BitBar(block) {
-  const zeros   = countLeadingZeroBits(block.id);
-  const free    = 256 - zeros;
-  const zeroPct = (zeros / 256 * 100).toFixed(2);
-  const freePct = (100 - zeroPct).toFixed(2);
-
-  document.getElementById('bit-zero-bar').style.width     = zeroPct + '%';
-  document.getElementById('bit-zero-bar').textContent     = zeros + ' zero bits';
-  document.getElementById('bit-free-bar').textContent     = free + ' free bits';
-  document.getElementById('bit-bar-label-zeros').textContent = zeros + ' zero bits (must be 0)';
-  document.getElementById('bit-bar-label-free').textContent  = free + ' free bits';
-
-  // Colorize hash
+function renderBitBar(block) {
+  const zeros = countLeadingZeroBits(block.id);
+  const free  = 256-zeros;
+  const pct   = (zeros/256*100).toFixed(2);
+  document.getElementById('bit-zero-bar').style.width = pct+'%';
+  document.getElementById('bit-zero-bar').textContent = zeros+' zero bits';
+  document.getElementById('bit-free-bar').textContent = free+' free bits';
+  document.getElementById('bit-bar-label-zeros').textContent = zeros+' zero bits (must be 0)';
+  document.getElementById('bit-bar-label-free').textContent  = free+' free bits';
   const h = block.id;
-  let leadingZeroChars = 0;
-  for (let c of h) { if (c === '0') leadingZeroChars++; else break; }
-  const el = document.getElementById('m1-hash-display');
-  el.innerHTML = `<span class="zeros">${h.slice(0, leadingZeroChars)}</span><span class="rest">${h.slice(leadingZeroChars)}</span>`;
+  let lz=0; for(let c of h){if(c==='0')lz++;else break;}
+  document.getElementById('m1-hash-display').innerHTML =
+    `<span class="zeros">${h.slice(0,lz)}</span><span class="rest">${h.slice(lz)}</span>`;
 }
 
-function renderM1Adjustment(block, blocks) {
-  const blocksSinceAdj = block.height % ADJUSTMENT_PERIOD;
-  const blocksRemaining = ADJUSTMENT_PERIOD - blocksSinceAdj;
-  const progress = (blocksSinceAdj / ADJUSTMENT_PERIOD * 100).toFixed(1);
+function renderAdjustment(block, blocks) {
+  const blocksSince = block.height % ADJUSTMENT_PERIOD;
+  const remaining   = ADJUSTMENT_PERIOD - blocksSince;
+  const progress    = (blocksSince/ADJUSTMENT_PERIOD*100).toFixed(1);
 
-  // Avg block time from recent blocks
-  const sorted = blocks.map(b => b.timestamp).sort((a,b) => a-b);
-  const deltas = [];
-  for (let i = 1; i < sorted.length; i++) deltas.push(sorted[i] - sorted[i-1]);
-  const avgBT = deltas.length ? deltas.reduce((a,b)=>a+b,0)/deltas.length : TARGET_BLOCK_TIME;
+  const sorted = blocks.map(b=>b.timestamp).sort((a,b)=>a-b);
+  const deltas = []; for(let i=1;i<sorted.length;i++) deltas.push(sorted[i]-sorted[i-1]);
+  const avgBT  = deltas.length ? deltas.reduce((a,b)=>a+b,0)/deltas.length : TARGET_BLOCK_TIME;
+  const adjPct = ((avgBT/TARGET_BLOCK_TIME-1)*100).toFixed(1);
 
-  const etaSeconds = blocksRemaining * avgBT;
-  const etaDays    = (etaSeconds / 86400).toFixed(1);
-  const adjRatio   = avgBT / TARGET_BLOCK_TIME;
-  const adjPct     = ((adjRatio - 1) * 100).toFixed(1);
-  const adjColor   = adjPct > 0 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('m1-adj-bar').style.width          = progress+'%';
+  document.getElementById('m1-adj-progress-label').textContent = blocksSince+' / '+ADJUSTMENT_PERIOD+' ('+progress+'%)';
+  document.getElementById('m1-blocks-remaining').textContent  = fmt(remaining);
+  document.getElementById('m1-adj-days').textContent          = (remaining*avgBT/86400).toFixed(1)+' days';
+  document.getElementById('m1-adj-pct').textContent           = (adjPct>0?'+':'')+adjPct+'%';
+  document.getElementById('m1-adj-pct').style.color           = adjPct>0 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('m1-adj-ratio').textContent         = 'avg block time: '+avgBT.toFixed(0)+'s (target: 600s)';
+  document.getElementById('m1-adj-blocks').textContent        = fmt(remaining)+' blocks remaining';
 
-  document.getElementById('m1-adj-bar').style.width            = progress + '%';
-  document.getElementById('m1-adj-progress-label').textContent = blocksSinceAdj + ' / ' + ADJUSTMENT_PERIOD + ' blocks (' + progress + '%)';
-  document.getElementById('m1-blocks-remaining').textContent   = fmt(blocksRemaining);
-  document.getElementById('m1-adj-days').textContent           = etaDays + ' days';
-  document.getElementById('m1-adj-pct').textContent            = (adjPct > 0 ? '+' : '') + adjPct + '%';
-  document.getElementById('m1-adj-pct').style.color            = adjColor;
-  document.getElementById('m1-adj-ratio').textContent          = 'avg block time: ' + avgBT.toFixed(0) + 's (target: 600s)';
-  document.getElementById('m1-adj-eta').textContent            = etaDays + ' days';
-  document.getElementById('m1-adj-blocks').textContent         = fmt(blocksRemaining) + ' blocks remaining';
+  // Set countdown end time
+  countdownEndTime = Date.now() + remaining * avgBT * 1000;
 }
 
-function renderM1Charts(blocks) {
-  const sorted = [...blocks].sort((a,b) => a.timestamp - b.timestamp);
-  const deltas = [];
-  for (let i = 1; i < sorted.length; i++) deltas.push(sorted[i].timestamp - sorted[i-1].timestamp);
+function renderCountdown(block, blocks) {
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    if (!countdownEndTime) return;
+    const remaining = Math.max(0, (countdownEndTime - Date.now()) / 1000);
+    document.getElementById('m1-countdown').textContent = fmtDuration(remaining);
+  }, 1000);
+}
 
-  // ── Inter-block time histogram ──────────────────────────────────
-  const maxDelta = Math.max(...deltas);
-  const bins = 20;
-  const binSize = maxDelta / bins;
+function renderSparkline(adjData) {
+  const el = document.getElementById('m1-sparkline');
+  if (!adjData || !adjData.length) return;
+
+  // Get last 10 difficulties
+  const diffs = adjData.slice(-10).map(item =>
+    Array.isArray(item) ? parseFloat(item[2]) : parseFloat(item.difficulty || 0)
+  ).filter(d => d > 0);
+
+  if (!diffs.length) return;
+
+  const max = Math.max(...diffs);
+  const min = Math.min(...diffs);
+  const range = max - min || 1;
+
+  el.innerHTML = diffs.map((d, i) => {
+    const h = Math.max(4, ((d - min) / range * 24 + 4));
+    const isLast = i === diffs.length - 1;
+    const color = isLast ? 'var(--blue)' : 'rgba(0,212,255,0.3)';
+    return `<div class="spark-bar" style="height:${h}px;background:${color};border-top-color:${color}" title="Difficulty: ${(d/1e12).toFixed(2)}T"></div>`;
+  }).join('');
+}
+
+function renderRecentBlocks(blocks) {
+  const sorted = [...blocks].sort((a,b) => b.height - a.height).slice(0, 10);
+  const tbody  = document.getElementById('m1-blocks-tbody');
+
+  const rows = sorted.map((b, i) => {
+    const prevBlock = sorted[i+1];
+    const delta     = prevBlock ? b.timestamp - prevBlock.timestamp : null;
+    const ts        = new Date(b.timestamp*1000).toUTCString().slice(5,22);
+    const shortHash = b.id.slice(0,8)+'...'+b.id.slice(-8);
+
+    let deltaClass = 'ok', deltaText = delta ? delta+'s' : '—';
+    if (delta !== null) {
+      if (delta < 60)  { deltaClass = 'fast'; }
+      else if (delta > 1200) { deltaClass = 'slow'; }
+    }
+
+    return `<tr>
+      <td class="blue">#${fmt(b.height)}</td>
+      <td>${ts} UTC</td>
+      <td><span class="delta-badge ${deltaClass}">${deltaText}</span></td>
+      <td>${fmt(b.tx_count)}</td>
+      <td>${fmt(b.nonce)}</td>
+      <td class="mono" style="font-size:10px;color:var(--text3)">${shortHash}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows || '<tr><td colspan="6" style="color:var(--text3);text-align:center;">No data</td></tr>';
+}
+
+function renderCharts(blocks) {
+  const sorted = [...blocks].sort((a,b) => a.timestamp-b.timestamp);
+  const deltas = []; for(let i=1;i<sorted.length;i++) deltas.push(sorted[i].timestamp-sorted[i-1].timestamp);
+
+  // Inter-block histogram
+  const maxD = Math.max(...deltas);
+  const bins = 20, bs = maxD/bins;
   const counts = new Array(bins).fill(0);
-  deltas.forEach(d => {
-    const b = Math.min(Math.floor(d / binSize), bins - 1);
-    counts[b]++;
-  });
-  const labels = counts.map((_, i) => Math.round((i + 0.5) * binSize) + 's');
+  deltas.forEach(d => { const b=Math.min(Math.floor(d/bs),bins-1); counts[b]++; });
+  const labels = counts.map((_,i) => Math.round((i+0.5)*bs)+'s');
+  const lam = 1/600;
+  const theory = labels.map((_,i) => lam*Math.exp(-lam*(i+0.5)*bs)*deltas.length*bs);
 
-  // Theoretical exponential
-  const lam = 1 / 600;
-  const theory = labels.map((_, i) => {
-    const x = (i + 0.5) * binSize;
-    return lam * Math.exp(-lam * x) * deltas.length * binSize;
-  });
+  const chartOpts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { labels: { color:'#8888aa', font:{family:'IBM Plex Mono',size:10}, boxWidth:12 } } },
+    scales: {
+      x: { ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:8}, grid:{color:'#1e1e2e'} },
+      y: { ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#1e1e2e'} }
+    }
+  };
 
   const ctxIB = document.getElementById('chart-interblock').getContext('2d');
   if (chartInterblock) chartInterblock.destroy();
   chartInterblock = new Chart(ctxIB, {
-    data: {
-      labels,
-      datasets: [
-        {
-          type: 'bar',
-          label: 'Observed',
-          data: counts,
-          backgroundColor: 'rgba(0,212,255,0.25)',
-          borderColor: 'rgba(0,212,255,0.6)',
-          borderWidth: 1,
-        },
-        {
-          type: 'line',
-          label: 'Exp(λ=1/600) theory',
-          data: theory,
-          borderColor: '#ff8c00',
-          borderWidth: 1.5,
-          borderDash: [4,3],
-          pointRadius: 0,
-          tension: 0.4,
-        }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8888aa', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 12 } } },
-      scales: {
-        x: { ticks: { color: '#4a4a6a', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: 8 }, grid: { color: '#1e1e2e' } },
-        y: { ticks: { color: '#4a4a6a', font: { size: 9, family: 'IBM Plex Mono' } }, grid: { color: '#1e1e2e' } }
-      }
-    }
+    data: { labels, datasets: [
+      { type:'bar',  label:'Observed', data:counts, backgroundColor:'rgba(0,212,255,0.25)', borderColor:'rgba(0,212,255,0.6)', borderWidth:1 },
+      { type:'line', label:'Exp(λ=1/600) theory', data:theory, borderColor:'#ff8c00', borderWidth:1.5, borderDash:[4,3], pointRadius:0, tension:0.4 }
+    ]},
+    options: chartOpts
   });
 
-  // ── Nonce distribution histogram ────────────────────────────────
-  const nonces   = sorted.map(b => b.nonce);
-  const nBins    = 16;
-  const nBinSize = Math.pow(2, 32) / nBins;
-  const nCounts  = new Array(nBins).fill(0);
-  nonces.forEach(n => {
-    const b = Math.min(Math.floor(n / nBinSize), nBins - 1);
-    nCounts[b]++;
-  });
-  const nLabels = nCounts.map((_, i) => (i * nBinSize / 1e9).toFixed(1) + 'B');
+  // Nonce histogram
+  const nonces  = sorted.map(b=>b.nonce);
+  const nBins   = 16, nBS = Math.pow(2,32)/nBins;
+  const nCounts = new Array(nBins).fill(0);
+  nonces.forEach(n => { const b=Math.min(Math.floor(n/nBS),nBins-1); nCounts[b]++; });
+  const nLabels = nCounts.map((_,i) => (i*nBS/1e9).toFixed(1)+'B');
 
   const ctxN = document.getElementById('chart-nonce').getContext('2d');
   if (chartNonce) chartNonce.destroy();
   chartNonce = new Chart(ctxN, {
-    type: 'bar',
-    data: {
-      labels: nLabels,
-      datasets: [{
-        label: 'Nonce frequency',
-        data: nCounts,
-        backgroundColor: 'rgba(157,78,221,0.3)',
-        borderColor: 'rgba(157,78,221,0.7)',
-        borderWidth: 1,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8888aa', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 12 } } },
-      scales: {
-        x: { ticks: { color: '#4a4a6a', font: { size: 9, family: 'IBM Plex Mono' } }, grid: { color: '#1e1e2e' } },
-        y: { ticks: { color: '#4a4a6a', font: { size: 9, family: 'IBM Plex Mono' } }, grid: { color: '#1e1e2e' } }
-      }
-    }
+    type:'bar',
+    data: { labels:nLabels, datasets:[{ label:'Nonce frequency', data:nCounts, backgroundColor:'rgba(157,78,221,0.3)', borderColor:'rgba(157,78,221,0.7)', borderWidth:1 }]},
+    options: chartOpts
   });
 }
 
-// ══════════════════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════════════════
+// ── Init ──────────────────────────────────────────────────────────
 (async function init() {
   await Promise.all([loadM1(), updateTopBar()]);
-  // Auto-refresh every 60s
   setInterval(() => { loadM1(); updateTopBar(); }, 60000);
 })();
 </script>

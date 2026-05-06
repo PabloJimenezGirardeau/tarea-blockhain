@@ -339,7 +339,16 @@ def _render_historical_cost(adjustments_raw: list) -> None:
     col1, col2, col3 = st.columns(3)
     with col1:
         first = df.iloc[0]
-        st.metric("Cost in 2013", f"${first['cost_hour']:,.0f}/hr")
+        first_cost = first['cost_hour']
+        if first_cost < 0.01:
+            cost_str = f"${first_cost:.6f}/hr"
+        elif first_cost < 1:
+            cost_str = f"${first_cost:.4f}/hr"
+        elif first_cost < 100:
+            cost_str = f"${first_cost:.2f}/hr"
+        else:
+            cost_str = f"${first_cost:,.0f}/hr"
+        st.metric("Cost in 2009", cost_str)
         st.caption(first["date"].strftime("%Y-%m-%d"))
     with col2:
         peak = df.loc[df["cost_hour"].idxmax()]
