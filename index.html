@@ -781,8 +781,104 @@
     <div id="m5-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching block transactions...</div>
   </div>
   <div id="tab-m6" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 06 <span>Security Score — 51% Attack</span></div></div>
-    <div class="coming-soon"><div class="icon">🔒</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 06 <span>Security Score — 51% Attack</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn primary" onclick="loadM6()">🔒 Calculate Security</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:center;flex-wrap:wrap;">
+        <div class="slider-row">
+          <label>Attacker hashrate fraction</label>
+          <input type="range" id="m6-q" min="1" max="49" value="30" step="1" oninput="onM6QChange(this.value)">
+          <span class="slider-val" id="m6-q-val">30%</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;">NiceHash price ($/TH/s/hr)</label>
+          <input id="m6-price" type="number" value="0.0001" step="0.00001" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 10px;outline:none;width:100%;" oninput="if(m6LiveData)renderM6(m6LiveData)">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;">BTC price (USD)</label>
+          <input id="m6-btc-price" type="number" value="95000" step="1000" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 10px;outline:none;width:100%;" oninput="if(m6LiveData)renderM6(m6LiveData)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Live cost metrics -->
+    <div class="metric-grid" id="m6-metrics" style="margin-bottom:16px;display:none">
+      <div class="metric-cell"><div class="metric-label">Network Hashrate</div><div class="metric-value blue" id="m6-hashrate">—</div><div class="metric-sub">live from Mempool.space</div></div>
+      <div class="metric-cell"><div class="metric-label">Attack Hashrate Needed</div><div class="metric-value orange" id="m6-attack-ths">—</div><div class="metric-sub">51% of network</div></div>
+      <div class="metric-cell"><div class="metric-label">Cost per Hour</div><div class="metric-value red" id="m6-cost-hour">—</div><div class="metric-sub" id="m6-cost-hour-sub">NiceHash SHA-256</div></div>
+      <div class="metric-cell"><div class="metric-label">Cost per Day</div><div class="metric-value" id="m6-cost-day">—</div><div class="metric-sub">sustained attack</div></div>
+      <div class="metric-cell"><div class="metric-label">Block Reward Value</div><div class="metric-value green" id="m6-block-reward">—</div><div class="metric-sub">3.125 BTC + fees</div></div>
+      <div class="metric-cell"><div class="metric-label">Economic Rationality</div><div class="metric-value" id="m6-rational">—</div><div class="metric-sub" id="m6-rational-sub">—</div></div>
+    </div>
+
+    <!-- Nakamoto curve + simulator side by side -->
+    <div class="chart-row">
+      <div class="panel" id="m6-nakamoto-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">&#9658;</span> Attack Probability vs Confirmations</div>
+          <span style="font-size:10px;color:var(--text3)">Nakamoto (2008) §11 · attacker q = <span id="m6-q-display">30%</span></span>
+        </div>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-m6-nakamoto"></canvas>
+        </div>
+      </div>
+
+      <div class="panel" id="m6-simulator-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">&#9658;</span> Transaction Security Simulator</div>
+          <span style="font-size:10px;color:var(--text3)">how many confirmations do you need?</span>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div class="slider-row">
+            <label>Transaction value (USD)</label>
+            <input type="range" id="m6-tx-value" min="3" max="8" value="4" step="0.1" oninput="onM6TxValueChange(this.value)">
+            <span class="slider-val" id="m6-tx-value-label">$10,000</span>
+          </div>
+        </div>
+        <div id="m6-sim-result" style="padding:14px;background:var(--bg3);border:1px solid var(--border2);"></div>
+        <div style="margin-top:12px;">
+          <table class="data-table" id="m6-conf-table">
+            <thead><tr><th>Transaction Value</th><th>Max Risk</th><th>Confirmations</th><th>Wait Time</th></tr></thead>
+            <tbody id="m6-conf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical cost -->
+    <div class="panel" id="m6-history-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Historical 51% Attack Cost</div>
+        <span style="font-size:10px;color:var(--text3)">estimated cost over time · key events annotated</span>
+      </div>
+      <div style="position:relative;height:300px;">
+        <canvas id="chart-m6-history"></canvas>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);margin-top:12px;">
+        <div style="background:var(--bg2);padding:10px 12px;"><div class="metric-label">Cost in 2009</div><div style="font-size:16px;font-weight:600;color:var(--text2);margin-top:3px;" id="m6-hist-2009">—</div></div>
+        <div style="background:var(--bg2);padding:10px 12px;"><div class="metric-label">Peak cost</div><div style="font-size:16px;font-weight:600;color:var(--green);margin-top:3px;" id="m6-hist-peak">—</div></div>
+        <div style="background:var(--bg2);padding:10px 12px;"><div class="metric-label">Cost today</div><div style="font-size:16px;font-weight:600;color:var(--blue);margin-top:3px;" id="m6-hist-today">—</div></div>
+      </div>
+    </div>
+
+    <!-- Blockchain comparison -->
+    <div class="panel" id="m6-compare-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> 51% Attack Cost — Blockchain Comparison</div>
+        <span style="font-size:10px;color:var(--text3)">log scale · smaller chains = cheaper to attack</span>
+      </div>
+      <div style="position:relative;height:260px;">
+        <canvas id="chart-m6-compare"></canvas>
+      </div>
+    </div>
+
+    <div id="m6-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching live Bitcoin data...</div>
   </div>
 </main>
 
@@ -2558,6 +2654,306 @@ function renderM5Steps(proof, txIndex) {
       <div style="font-size:9px;font-family:var(--mono);color:var(--green);word-break:break-all;padding:4px 6px;background:var(--bg2);border-left:2px solid var(--green);">${step.result}</div>
     </div>
   `).join('');
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// M6 — SECURITY SCORE: 51% ATTACK
+// ══════════════════════════════════════════════════════════════════
+
+let m6LiveData   = null;
+let m6AdjHistory = [];
+let chartM6Nak   = null, chartM6Hist = null, chartM6Cmp = null;
+
+const OTHER_CHAINS = [
+  { name:'Bitcoin',      hashEhs: null,   price:0.0001,  color:'#ff8c00' },
+  { name:'Bitcoin Cash', hashEhs: 0.003,  price:0.0001,  color:'#22c55e' },
+  { name:'Litecoin',     hashEhs: 0.0008, price:0.00008, color:'#3b82f6' },
+  { name:'Bitcoin SV',   hashEhs: 0.0001, price:0.0001,  color:'#9d4edd' },
+];
+
+function attackSuccessProb(q, z) {
+  if (q >= 0.5) return 1.0;
+  if (q <= 0)   return 0.0;
+  const p   = 1 - q;
+  const lam = z * (q / p);
+  let total = 0;
+  for (let k=0; k<=z; k++) {
+    let poisson = Math.exp(-lam);
+    for (let i=1; i<=k; i++) poisson *= lam/i;
+    total += poisson * (1 - Math.pow(q/p, z-k));
+  }
+  return Math.max(0, 1 - total);
+}
+
+function confsForRisk(q, maxRisk) {
+  for (let z=1; z<=100; z++) {
+    if (attackSuccessProb(q, z) < maxRisk) return z;
+  }
+  return 100;
+}
+
+function onM6QChange(val) {
+  document.getElementById('m6-q-val').textContent = val + '%';
+  document.getElementById('m6-q-display').textContent = val + '%';
+  if (m6LiveData) {
+    renderM6NakamotoCurve();
+    renderM6Simulator();
+  }
+}
+
+function onM6TxValueChange(val) {
+  const usd = Math.pow(10, parseFloat(val));
+  document.getElementById('m6-tx-value-label').textContent = '$' + fmt(usd);
+  renderM6Simulator();
+}
+
+async function loadM6() {
+  document.getElementById('m6-loading').style.display = 'flex';
+  ['m6-metrics','m6-nakamoto-panel','m6-simulator-panel','m6-history-panel','m6-compare-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  try {
+    const [block, adjRaw] = await Promise.all([
+      fetch(`${API}/blocks/tip/hash`).then(r=>r.text()).then(h=>fetch(`${API}/block/${h.trim()}`).then(r=>r.json())),
+      fetch(`${API}/v1/mining/difficulty-adjustments`).then(r=>r.json()).catch(()=>[]),
+    ]);
+
+    const hashrateThs = block.difficulty * Math.pow(2,32) / 600 / 1e12;
+    const hashrateEhs = hashrateThs / 1e6;
+    m6LiveData = { block, hashrateThs, hashrateEhs };
+
+    // Parse history
+    m6AdjHistory = [];
+    for (const item of adjRaw) {
+      try {
+        let ts, diff;
+        if (Array.isArray(item)) { ts=item[0]; diff=item[2]; }
+        else { ts=item.time||item.timestamp; diff=item.difficulty; }
+        if (ts && diff && parseFloat(diff)>0) {
+          const htsThs = parseFloat(diff)*Math.pow(2,32)/600/1e12;
+          m6AdjHistory.push({ ts:parseInt(ts), costHour: htsThs*1e6*0.51*0.0001 });
+        }
+      } catch(e) {}
+    }
+    m6AdjHistory.sort((a,b)=>a.ts-b.ts);
+
+    renderM6(m6LiveData);
+    document.getElementById('m6-loading').style.display = 'none';
+  } catch(e) {
+    console.error('M6 failed:', e);
+    document.getElementById('m6-loading').textContent = '⚠ Failed: ' + e.message;
+  }
+}
+
+function renderM6(data) {
+  const price    = parseFloat(document.getElementById('m6-price').value) || 0.0001;
+  const btcPrice = parseFloat(document.getElementById('m6-btc-price').value) || 95000;
+  const { hashrateThs, hashrateEhs } = data;
+
+  const attackThs    = hashrateThs * 0.51;
+  const costHour     = attackThs * price;
+  const costDay      = costHour * 24;
+  const blockReward  = (3.125 + 0.05) * btcPrice;
+  const blocksPerHour= 6;
+  const rewardPerHour= blockReward * blocksPerHour;
+  const isRational   = costHour < rewardPerHour;
+
+  // Update metrics
+  document.getElementById('m6-hashrate').textContent    = hashrateEhs.toFixed(1) + ' EH/s';
+  document.getElementById('m6-attack-ths').textContent  = fmt(attackThs) + ' TH/s';
+  document.getElementById('m6-cost-hour').textContent   = '$' + fmt(costHour);
+  document.getElementById('m6-cost-day').textContent    = '$' + fmt(costDay);
+  document.getElementById('m6-block-reward').textContent= '$' + fmt(blockReward);
+
+  const rationalEl  = document.getElementById('m6-rational');
+  const rationalSub = document.getElementById('m6-rational-sub');
+  if (isRational) {
+    rationalEl.textContent  = '✅ Rational';
+    rationalEl.style.color  = 'var(--green)';
+    rationalSub.textContent = 'Cost < block rewards — theoretically profitable';
+  } else {
+    rationalEl.textContent  = '⚠ Irrational';
+    rationalEl.style.color  = 'var(--red)';
+    rationalSub.textContent = 'Cost > rewards — economically pointless';
+  }
+
+  document.getElementById('m6-metrics').style.display = 'grid';
+
+  renderM6NakamotoCurve();
+  renderM6Simulator();
+  renderM6History();
+  renderM6Comparison(hashrateEhs, price);
+
+  ['m6-nakamoto-panel','m6-simulator-panel','m6-history-panel','m6-compare-panel'].forEach(id=>document.getElementById(id).style.display='block');
+}
+
+function renderM6NakamotoCurve() {
+  const q = parseInt(document.getElementById('m6-q').value) / 100;
+  const zVals = Array.from({length:31},(_,i)=>i);
+  const probs  = zVals.map(z => attackSuccessProb(q, z) * 100);
+
+  const ctx = document.getElementById('chart-m6-nakamoto').getContext('2d');
+  if (chartM6Nak) chartM6Nak.destroy();
+  chartM6Nak = new Chart(ctx, {
+    type:'line',
+    data:{labels:zVals, datasets:[{
+      label:'Attack success probability (%)',
+      data:probs,
+      borderColor:'#ef4444',
+      borderWidth:2,
+      backgroundColor:'rgba(255,68,102,0.08)',
+      fill:true,
+      tension:0.3,
+      pointRadius:3,
+      pointBackgroundColor: probs.map(p => p>50?'#ef4444':p>10?'#ff8c00':'#22c55e'),
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#111118',titleColor:'#ef4444',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
+          callbacks:{
+            title: ctx=>'z = '+ctx[0].label+' confirmations',
+            label: ctx=>'Probability: '+ctx.parsed.y.toFixed(4)+'%',
+            afterLabel: ctx=>{
+              const p = ctx.parsed.y;
+              return p>50?'⚠ High risk':p>10?'⚡ Moderate risk':p>1?'✓ Low risk':'✅ Very safe';
+            }
+          }
+        },
+        annotation:{annotations:{
+          p50:{type:'line',yMin:50,yMax:50,borderColor:'rgba(255,68,102,0.4)',borderWidth:1,borderDash:[4,3],label:{display:true,content:'50% risk',color:'#ff4466',font:{size:9}}},
+          p1: {type:'line',yMin:1, yMax:1, borderColor:'rgba(0,255,136,0.4)',borderWidth:1,borderDash:[4,3],label:{display:true,content:'1% risk',color:'#00ff88',font:{size:9}}},
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#1e1e2e'},title:{display:true,text:'Confirmations (z)',color:'#4a4a6a',font:{size:9}}},
+        y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>v+'%'},grid:{color:'#1e1e2e'},min:0,max:100,title:{display:true,text:'Attack success probability',color:'#4a4a6a',font:{size:9}}}
+      }
+    }
+  });
+}
+
+function renderM6Simulator() {
+  if (!m6LiveData) return;
+  const q        = parseInt(document.getElementById('m6-q').value) / 100;
+  const txVal    = Math.pow(10, parseFloat(document.getElementById('m6-tx-value').value));
+  const price    = parseFloat(document.getElementById('m6-price').value) || 0.0001;
+  const { hashrateThs } = m6LiveData;
+  const costPerBlock = hashrateThs * 0.51 * price / 6;
+
+  // Find confirmations where attack cost > tx value
+  let safeConfs = 1;
+  for (let z=1; z<=100; z++) {
+    if (costPerBlock * z > txVal) { safeConfs = z; break; }
+  }
+  const riskAtSafe = attackSuccessProb(q, safeConfs) * 100;
+
+  const result = document.getElementById('m6-sim-result');
+  result.innerHTML = `
+    <div style="font-size:11px;color:var(--text2);line-height:1.9;">
+      For a <span style="color:var(--blue);font-weight:600;">$${fmt(txVal)}</span> transaction with attacker at <span style="color:var(--orange);">${(q*100).toFixed(0)}%</span> hashrate:<br>
+      Wait <span style="color:var(--green);font-weight:600;font-size:16px;">${safeConfs} confirmation${safeConfs>1?'s':''}</span> (~${safeConfs*10} min) for attack cost > tx value.<br>
+      Attack success probability at ${safeConfs} confs: <span style="color:${riskAtSafe<1?'var(--green)':riskAtSafe<10?'var(--orange)':'var(--red)'};">${riskAtSafe.toFixed(4)}%</span>
+    </div>`;
+
+  // Recommendations table
+  const tiers = [
+    {label:'< $100',   val:100,     risk:0.10},
+    {label:'$1K',      val:1000,    risk:0.05},
+    {label:'$10K',     val:10000,   risk:0.01},
+    {label:'$100K',    val:100000,  risk:0.001},
+    {label:'> $1M',    val:1000000, risk:0.0001},
+  ];
+  document.getElementById('m6-conf-tbody').innerHTML = tiers.map(t => {
+    const z = confsForRisk(q, t.risk);
+    return `<tr>
+      <td style="color:var(--blue);">${t.label}</td>
+      <td>${(t.risk*100).toFixed(2)}%</td>
+      <td style="color:var(--green);font-weight:600;">${z}</td>
+      <td>~${z*10} min</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderM6History() {
+  if (!m6AdjHistory.length) return;
+  const valid = m6AdjHistory.filter(d => d.costHour > 0.001);
+  const labels = valid.map(d => new Date(d.ts*1000).toISOString().slice(0,7));
+  const costs  = valid.map(d => d.costHour);
+  const chinaIdx = costs.indexOf(Math.min(...costs.filter((_,i)=>new Date(valid[i].ts*1000).getFullYear()>=2021)));
+
+  const ctx = document.getElementById('chart-m6-history').getContext('2d');
+  if (chartM6Hist) chartM6Hist.destroy();
+  chartM6Hist = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[{
+      label:'51% attack cost ($/hr)',
+      data:costs,
+      borderColor:'#3b82f6',
+      borderWidth:1.5,
+      backgroundColor:'rgba(59,130,246,0.06)',
+      fill:true,
+      tension:0.3,
+      pointRadius:0,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#111118',titleColor:'#00d4ff',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,callbacks:{label:ctx=>'$'+fmt(ctx.parsed.y)+'/hr'}},
+        annotation:{annotations:{
+          china:{type:'line',xMin:chinaIdx,xMax:chinaIdx,borderColor:'rgba(255,68,102,0.6)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'China ban ▼',color:'#ff4466',font:{size:9},position:'start'}},
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:10},grid:{color:'#1e1e2e'}},
+        y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>'$'+fmt(v)},grid:{color:'#1e1e2e'}}
+      }
+    }
+  });
+
+  const first = valid[0], peak = valid.reduce((a,b)=>b.costHour>a.costHour?b:a), last = valid[valid.length-1];
+  const fmtCost = v => v < 0.01 ? '$'+v.toFixed(6)+'/hr' : '$'+fmt(v)+'/hr';
+  document.getElementById('m6-hist-2009').textContent = fmtCost(first.costHour);
+  document.getElementById('m6-hist-peak').textContent = '$'+fmt(peak.costHour)+'/hr';
+  document.getElementById('m6-hist-today').textContent= '$'+fmt(last.costHour)+'/hr';
+}
+
+function renderM6Comparison(btcEhs, price) {
+  OTHER_CHAINS[0].hashEhs = btcEhs;
+  const names  = OTHER_CHAINS.map(c => c.name);
+  const costs  = OTHER_CHAINS.map(c => c.hashEhs * 1e6 * 0.51 * c.price);
+  const colors = OTHER_CHAINS.map(c => c.color);
+
+  const ctx = document.getElementById('chart-m6-compare').getContext('2d');
+  if (chartM6Cmp) chartM6Cmp.destroy();
+  chartM6Cmp = new Chart(ctx, {
+    type:'bar',
+    data:{labels:names, datasets:[{
+      label:'51% attack cost ($/hr)',
+      data:costs,
+      backgroundColor:colors.map(c=>c+'99'),
+      borderColor:colors,
+      borderWidth:1.5,
+      borderRadius:3,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#111118',titleColor:'#00d4ff',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
+          callbacks:{label:ctx=>'$'+fmt(ctx.parsed.y)+'/hr · $'+fmt(ctx.parsed.y*24)+'/day'}}
+      },
+      scales:{
+        x:{ticks:{color:'#8888aa',font:{size:10,family:'IBM Plex Mono'}},grid:{display:false}},
+        y:{type:'logarithmic',ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>v>=1?'$'+fmt(v):'$'+v.toFixed(4)},grid:{color:'#1e1e2e'},title:{display:true,text:'USD/hour (log scale)',color:'#4a4a6a',font:{size:9}}}
+      }
+    }
+  });
 }
 
 // INIT
