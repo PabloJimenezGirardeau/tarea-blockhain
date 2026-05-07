@@ -306,8 +306,80 @@
 
   <!-- Placeholders -->
   <div id="tab-m2" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 02 <span>Block Header Analyzer</span></div></div>
-    <div class="coming-soon"><div class="icon">🧱</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 02 <span>Block Header Analyzer</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn" onclick="exportM2JSON()" id="m2-export-btn" style="display:none">⬇ Export JSON</button>
+        <button class="btn" onclick="toggleM2Compare()" id="m2-compare-btn" style="display:none">⇄ Compare Block</button>
+        <button class="btn primary" onclick="loadLatestM2()">⬇ Latest Block</button>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <input id="m2-hash-input" type="text" placeholder="Enter block hash..." style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 12px;outline:none;" onkeydown="if(event.key==='Enter')loadM2Block()">
+        <button class="btn primary" onclick="loadM2Block()">→ Inspect</button>
+      </div>
+      <div id="m2-preload-notice" style="display:none;margin-top:8px;font-size:10px;color:var(--green);">⚡ Preloaded from M1 — click Inspect to verify</div>
+    </div>
+
+    <div id="m2-content" style="display:none;">
+      <!-- Block info bar -->
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:11px;color:var(--text2)">Block <span id="m2-block-height" style="color:var(--blue)">—</span> · <span id="m2-block-hash-short" style="color:var(--text3);font-size:10px;">—</span></span>
+        <span id="m2-pow-badge" style="font-size:10px;font-weight:600;padding:3px 10px;"></span>
+      </div>
+
+      <!-- Compare panel (hidden by default) -->
+      <div id="m2-compare-panel" style="display:none;margin-bottom:16px;">
+        <div class="panel" style="padding:12px 20px;">
+          <div class="panel-header"><div class="panel-title"><span class="accent">▸</span> Block Comparison</div></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input id="m2-compare-input" type="text" placeholder="Enter second block hash to compare..." style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 12px;outline:none;">
+            <button class="btn" onclick="loadM2Compare()">→ Compare</button>
+          </div>
+          <div id="m2-compare-result" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- Header fields -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">▸</span> Block Header Fields (80 bytes)</div>
+          <span style="font-size:10px;color:var(--text3)">all values parsed from raw hex · little-endian</span>
+        </div>
+        <div id="m2-fields-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);"></div>
+      </div>
+
+      <!-- Byte map -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">▸</span> Header Byte Map (80 bytes)</div>
+        </div>
+        <div id="m2-bytemap" style="display:flex;height:36px;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px;"></div>
+        <div id="m2-bytemap-legend" style="display:flex;flex-wrap:wrap;gap:12px;font-size:10px;color:var(--text3);margin-bottom:10px;"></div>
+        <div id="m2-hex-dump" style="font-size:9px;font-family:var(--mono);color:var(--text3);line-height:1.8;padding:10px;background:var(--bg3);border:1px solid var(--border);word-break:break-all;"></div>
+      </div>
+
+      <!-- SHA256 verification -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">▸</span> Proof of Work Verification — SHA256² (local · Web Crypto API)</div>
+        </div>
+        <div id="m2-verification-steps" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+
+      <!-- Hash vs Target -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">▸</span> Hash vs Target — 256-bit comparison</div>
+        </div>
+        <div id="m2-hash-vs-target"></div>
+      </div>
+    </div>
+
+    <div id="m2-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching block & computing SHA256²...</div>
   </div>
   <div id="tab-m3" class="tab-page">
     <div class="page-header"><div class="page-title">Module 03 <span>Difficulty History</span></div></div>
@@ -597,6 +669,327 @@ function renderCharts(blocks){
       }
     }
   });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// M2 — BLOCK HEADER ANALYZER
+// ══════════════════════════════════════════════════════════════════
+
+const HEADER_FIELDS_DEF = [
+  { name:'Version',              start:0,  end:4,  color:'#6366f1', desc:'Protocol version. Signals supported soft-forks.' },
+  { name:'Previous Block Hash',  start:4,  end:36, color:'#3b82f6', desc:'SHA256² of the previous block header — forms the chain.' },
+  { name:'Merkle Root',          start:36, end:68, color:'#22c55e', desc:'Root of the Merkle tree of all transactions in this block.' },
+  { name:'Timestamp',            start:68, end:72, color:'#f59e0b', desc:'Unix timestamp when the miner started hashing.' },
+  { name:'Bits',                 start:72, end:76, color:'#ef4444', desc:'Compact encoding of the difficulty target threshold.' },
+  { name:'Nonce',                start:76, end:80, color:'#a855f7', desc:'32-bit value miners iterate to find a valid hash.' },
+];
+
+let m2CurrentBlock = null;
+let m2CurrentHeaderHex = null;
+let m2CurrentFields = null;
+
+function loadM2WithHash(hash) {
+  const input = document.getElementById('m2-hash-input');
+  if (input) {
+    input.value = hash;
+    document.getElementById('m2-preload-notice').style.display = 'block';
+  }
+}
+
+async function loadLatestM2() {
+  try {
+    const tipHash = await fetch(`${API}/blocks/tip/hash`).then(r => r.text());
+    document.getElementById('m2-hash-input').value = tipHash.trim();
+    document.getElementById('m2-preload-notice').style.display = 'none';
+    await loadM2Block();
+  } catch(e) { console.error(e); }
+}
+
+async function loadM2Block() {
+  const hash = document.getElementById('m2-hash-input').value.trim();
+  if (!hash) return;
+
+  document.getElementById('m2-content').style.display = 'none';
+  document.getElementById('m2-loading').style.display = 'flex';
+  document.getElementById('m2-preload-notice').style.display = 'none';
+
+  try {
+    const [block, headerHex] = await Promise.all([
+      fetch(`${API}/block/${hash}`).then(r => r.json()),
+      fetch(`${API}/block/${hash}/header`).then(r => r.text()),
+    ]);
+
+    m2CurrentBlock = block;
+    m2CurrentHeaderHex = headerHex.trim();
+    m2CurrentFields = parseHeader(m2CurrentHeaderHex);
+
+    renderM2Fields(m2CurrentFields);
+    renderM2ByteMap(m2CurrentHeaderHex);
+    await renderM2Verification(m2CurrentHeaderHex, m2CurrentFields);
+    renderM2HashVsTarget(m2CurrentFields);
+
+    document.getElementById('m2-block-height').textContent = '#' + fmt(block.height);
+    document.getElementById('m2-block-hash-short').textContent = hash.slice(0,16) + '...' + hash.slice(-8);
+    document.getElementById('m2-export-btn').style.display = 'inline-flex';
+    document.getElementById('m2-compare-btn').style.display = 'inline-flex';
+    document.getElementById('m2-loading').style.display = 'none';
+    document.getElementById('m2-content').style.display = 'block';
+  } catch(e) {
+    console.error('M2 failed:', e);
+    document.getElementById('m2-loading').style.display = 'none';
+    document.getElementById('m2-content').style.display = 'none';
+    alert('Could not fetch block: ' + e.message);
+  }
+}
+
+function parseHeader(hex) {
+  const bytes = hexToBytes(hex);
+  const view  = new DataView(bytes.buffer);
+
+  const version   = view.getUint32(0, true);
+  const prevHash  = reverseHex(hex.slice(8, 72));
+  const merkle    = reverseHex(hex.slice(72, 136));
+  const timestamp = view.getUint32(68, true);
+  const bits      = view.getUint32(72, true);
+  const nonce     = view.getUint32(76, true);
+
+  return { version, prevHash, merkle, timestamp, bits, nonce };
+}
+
+function hexToBytes(hex) {
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < arr.length; i++) arr[i] = parseInt(hex.slice(i*2, i*2+2), 16);
+  return arr;
+}
+
+function reverseHex(hex) {
+  const bytes = hexToBytes(hex);
+  return Array.from(bytes).reverse().map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function bitsToTargetHex(bits) {
+  const exp  = (bits >>> 24) & 0xff;
+  const mant = bits & 0x007fffff;
+  const target = BigInt(mant) * (2n ** BigInt(8 * (exp - 3)));
+  return target.toString(16).padStart(64, '0');
+}
+
+function countZeroBitsHex(hex) {
+  const n = BigInt('0x' + hex);
+  return n === 0n ? 256 : 256 - n.toString(2).length;
+}
+
+function renderM2Fields(fields) {
+  const ts = new Date(fields.timestamp * 1000).toUTCString().slice(5,25) + ' UTC';
+  const bitsHex = '0x' + fields.bits.toString(16).padStart(8,'0');
+  const target  = bitsToTargetHex(fields.bits);
+
+  const items = [
+    { label:'Version',             value: fields.version.toString(),      sub:'Protocol version', color:'#6366f1' },
+    { label:'Previous Block Hash', value: fields.prevHash,                sub:'Links to parent block', color:'#3b82f6', mono:true, small:true },
+    { label:'Merkle Root',         value: fields.merkle,                  sub:'Root of tx Merkle tree', color:'#22c55e', mono:true, small:true },
+    { label:'Timestamp',           value: fields.timestamp + ' (' + ts +')', sub:'Unix timestamp', color:'#f59e0b' },
+    { label:'Bits (compact target)',value: bitsHex,                       sub:'Full target: ' + target.slice(0,16)+'...', color:'#ef4444', mono:true },
+    { label:'Nonce',               value: fmt(fields.nonce),              sub:'32-bit search value', color:'#a855f7' },
+  ];
+
+  document.getElementById('m2-fields-grid').innerHTML = items.map(item => `
+    <div style="background:var(--bg2);padding:14px 16px;border-left:3px solid ${item.color};">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">${item.label}</div>
+      <div style="font-size:${item.small?'10px':'14px'};font-weight:600;color:var(--text);word-break:break-all;${item.mono?'font-family:var(--mono);':''}line-height:1.5;">${item.value}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;">${item.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderM2ByteMap(hex) {
+  const mapEl    = document.getElementById('m2-bytemap');
+  const legendEl = document.getElementById('m2-bytemap-legend');
+  const dumpEl   = document.getElementById('m2-hex-dump');
+
+  mapEl.innerHTML = HEADER_FIELDS_DEF.map(f => {
+    const w = ((f.end - f.start) / 80 * 100).toFixed(2);
+    const chunk = hex.slice(f.start*2, f.end*2);
+    return `<div style="width:${w}%;background:${f.color};display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:600;overflow:hidden;white-space:nowrap;padding:0 4px;cursor:default;" title="${f.name}: ${chunk}">${f.name.split(' ')[0]}<br>${f.end-f.start}B</div>`;
+  }).join('');
+
+  legendEl.innerHTML = HEADER_FIELDS_DEF.map(f =>
+    `<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:${f.color};display:inline-block;"></span>${f.name} (${f.end-f.start}B)</span>`
+  ).join('');
+
+  dumpEl.innerHTML = HEADER_FIELDS_DEF.map(f => {
+    const chunk = hex.slice(f.start*2, f.end*2);
+    const pairs = chunk.match(/.{2}/g) || [];
+    return `<span style="color:var(--text3);font-size:9px;">${f.name}: </span><span style="color:${f.color};">${pairs.join(' ')}</span>  `;
+  }).join('<br>');
+}
+
+async function renderM2Verification(headerHex, fields) {
+  const container = document.getElementById('m2-verification-steps');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div> Computing SHA256²...</div>';
+
+  // Use Web Crypto API
+  const rawBytes  = hexToBytes(headerHex).buffer;
+  const hash1Buf  = await crypto.subtle.digest('SHA-256', rawBytes);
+  const hash2Buf  = await crypto.subtle.digest('SHA-256', hash1Buf);
+
+  const hash1Hex  = bufToHex(hash1Buf);
+  const hash2Hex  = bufToHex(hash2Buf);
+  const finalHash = reverseHex(hash2Hex); // Bitcoin display convention
+
+  const targetHex = bitsToTargetHex(fields.bits);
+  const isValid   = BigInt('0x'+finalHash) <= BigInt('0x'+targetHex);
+  const zeros     = countZeroBitsHex(finalHash);
+
+  const steps = [
+    { step:1, title:'SHA256(raw header bytes)', input:'80-byte header hex', output:hash1Hex, color:'#3b82f6' },
+    { step:2, title:'SHA256( result of step 1 )', input:'hash1', output:hash2Hex, color:'#8b5cf6' },
+    { step:3, title:'Reverse byte order (Bitcoin convention)', input:'hash2', output:finalHash, color:'#22c55e' },
+  ];
+
+  // Animate steps with delay
+  container.innerHTML = '';
+  for (const s of steps) {
+    await new Promise(r => setTimeout(r, 300));
+    const el = document.createElement('div');
+    el.style.cssText = 'opacity:0;transform:translateY(6px);transition:all .3s ease;';
+    el.innerHTML = `
+      <div style="border:1px solid var(--border2);padding:12px 14px;background:var(--bg3);">
+        <div style="font-size:10px;color:${s.color};font-weight:600;margin-bottom:6px;">Step ${s.step} — ${s.title}</div>
+        <div style="font-size:9px;color:var(--text3);margin-bottom:4px;">Input: ${s.input}</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text2);word-break:break-all;padding:6px 8px;background:var(--bg2);border:1px solid var(--border);">${s.output}</div>
+      </div>`;
+    container.appendChild(el);
+    await new Promise(r => setTimeout(r, 50));
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  }
+
+  // Result
+  await new Promise(r => setTimeout(r, 400));
+  const resultEl = document.createElement('div');
+  resultEl.style.cssText = 'opacity:0;transform:translateY(6px);transition:all .3s ease;';
+  resultEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:10px;">
+      <div style="background:var(--bg2);padding:10px 12px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Computed hash</div>
+        <div style="font-size:9px;font-family:var(--mono);color:var(--green);word-break:break-all;">${finalHash}</div>
+      </div>
+      <div style="background:var(--bg2);padding:10px 12px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Target threshold</div>
+        <div style="font-size:9px;font-family:var(--mono);color:var(--orange);word-break:break-all;">${targetHex}</div>
+      </div>
+    </div>
+    <div style="padding:10px 14px;background:${isValid?'var(--green-dim)':'var(--red-dim)'};border:1px solid ${isValid?'rgba(0,255,136,.3)':'rgba(255,68,102,.3)'};font-size:11px;font-weight:600;color:${isValid?'var(--green)':'var(--red)'};">
+      ${isValid ? '✅ Valid Proof of Work — hash < target · ' + zeros + ' leading zero bits' : '❌ Invalid — hash exceeds target'}
+    </div>`;
+  container.appendChild(resultEl);
+  await new Promise(r => setTimeout(r, 50));
+  resultEl.style.opacity = '1';
+  resultEl.style.transform = 'translateY(0)';
+
+  // Store for export
+  m2CurrentBlock._computedHash = finalHash;
+  m2CurrentBlock._isValid = isValid;
+  m2CurrentBlock._zeros = zeros;
+  document.getElementById('m2-pow-badge').textContent = isValid ? '✅ VALID PoW · ' + zeros + ' zero bits' : '❌ INVALID';
+  document.getElementById('m2-pow-badge').style.cssText = `background:${isValid?'var(--green-dim)':'var(--red-dim)'};color:${isValid?'var(--green)':'var(--red)'};border:1px solid ${isValid?'rgba(0,255,136,.3)':'rgba(255,68,102,.3)'};`;
+}
+
+function renderM2HashVsTarget(fields) {
+  const targetHex = bitsToTargetHex(fields.bits);
+  const hashHex   = m2CurrentBlock._computedHash || '';
+  if (!hashHex) return;
+
+  const hashZeros   = countZeroBitsHex(hashHex);
+  const targetZeros = countZeroBitsHex(targetHex);
+  const hashFreePct = ((256 - hashZeros) / 256 * 100).toFixed(2);
+  const targetFreePct = ((256 - targetZeros) / 256 * 100).toFixed(2);
+
+  document.getElementById('m2-hash-vs-target').innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Block hash (computed) — ${hashZeros} leading zero bits</div>
+      <div style="height:28px;display:flex;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;">
+        <div style="width:${(hashZeros/256*100).toFixed(2)}%;background:linear-gradient(90deg,#ef4444,#ff6688);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:white;">${hashZeros} zeros</div>
+        <div style="flex:1;background:linear-gradient(90deg,#1e3a5f,#3b82f6);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:rgba(255,255,255,.7);">${256-hashZeros} free</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Target threshold — ${targetZeros} leading zero bits required</div>
+      <div style="height:28px;display:flex;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;">
+        <div style="width:${(targetZeros/256*100).toFixed(2)}%;background:linear-gradient(90deg,#f97316,#ffaa44);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:white;">${targetZeros} zeros</div>
+        <div style="flex:1;background:var(--bg3);display:flex;align-items:center;justify-content:flex-end;padding:0 8px;font-size:10px;color:var(--text3);">${256-targetZeros} free</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);padding:8px 12px;background:var(--bg3);border:1px solid var(--border);">
+      The hash has <span style="color:var(--red);font-weight:600;">${hashZeros} leading zero bits</span>, which is ≥ the <span style="color:var(--orange);font-weight:600;">${targetZeros} required</span> by the target. 
+      This proves the miner performed the required computational work.
+    </div>`;
+}
+
+function bufToHex(buf) {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function exportM2JSON() {
+  if (!m2CurrentFields || !m2CurrentBlock) return;
+  const data = {
+    block_height:   m2CurrentBlock.height,
+    block_hash:     m2CurrentBlock.id,
+    header_hex:     m2CurrentHeaderHex,
+    fields: {
+      version:       m2CurrentFields.version,
+      prev_hash:     m2CurrentFields.prevHash,
+      merkle_root:   m2CurrentFields.merkle,
+      timestamp:     m2CurrentFields.timestamp,
+      bits:          '0x' + m2CurrentFields.bits.toString(16).padStart(8,'0'),
+      nonce:         m2CurrentFields.nonce,
+    },
+    computed_hash:  m2CurrentBlock._computedHash,
+    target:         bitsToTargetHex(m2CurrentFields.bits),
+    pow_valid:      m2CurrentBlock._isValid,
+    leading_zeros:  m2CurrentBlock._zeros,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `block_${m2CurrentBlock.height}_header.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function toggleM2Compare() {
+  const panel = document.getElementById('m2-compare-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+async function loadM2Compare() {
+  const hash2 = document.getElementById('m2-compare-input').value.trim();
+  if (!hash2 || !m2CurrentBlock) return;
+  const container = document.getElementById('m2-compare-result');
+  container.innerHTML = '<div class="loading"><div class="spinner"></div> Loading comparison block...</div>';
+  try {
+    const block2 = await fetch(`${API}/block/${hash2}`).then(r => r.json());
+    const header2 = await fetch(`${API}/block/${hash2}/header`).then(r => r.text());
+    const fields2 = parseHeader(header2.trim());
+    const b1 = m2CurrentBlock, f1 = m2CurrentFields;
+    const timeDiff = Math.abs(f1.timestamp - fields2.timestamp);
+    const heightDiff = Math.abs(b1.height - block2.height);
+
+    const rows = [
+      ['Field', `Block #${fmt(b1.height)}`, `Block #${fmt(block2.height)}`, 'Diff'],
+      ['Version',   f1.version,       fields2.version,     f1.version===fields2.version?'—':'⚠ changed'],
+      ['Timestamp', new Date(f1.timestamp*1000).toUTCString().slice(5,16), new Date(fields2.timestamp*1000).toUTCString().slice(5,16), timeDiff+'s apart'],
+      ['Bits',      '0x'+f1.bits.toString(16), '0x'+fields2.bits.toString(16), f1.bits===fields2.bits?'same period':'⚠ different'],
+      ['Nonce',     fmt(f1.nonce),    fmt(fields2.nonce),  '—'],
+      ['Height',    fmt(b1.height),   fmt(block2.height),  heightDiff+' blocks apart'],
+    ];
+
+    container.innerHTML = `<table class="data-table">
+      ${rows.map((r,i) => `<${i===0?'thead><tr>':'tbody><tr>'}${r.map((c,j) => `<${i===0?'th':'td'} style="${j===3?'color:var(--orange)':''}">${c}</${i===0?'th':'td'}>`).join('')}</tr></${i===0?'thead':'tbody'}>`).join('')}
+    </table>`;
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);font-size:11px;">⚠ Could not load comparison block</div>';
+  }
 }
 
 // INIT
