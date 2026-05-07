@@ -382,8 +382,71 @@
     <div id="m2-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching block & computing SHA256²...</div>
   </div>
   <div id="tab-m3" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 03 <span>Difficulty History</span></div></div>
-    <div class="coming-soon"><div class="icon">📈</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 03 <span>Difficulty History</span></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn primary" onclick="loadM3()">↺ Refresh</button>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:10px 20px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Range:</span>
+        <button class="btn m3-range active" data-range="30"  onclick="setM3Range(30,this)">1M</button>
+        <button class="btn m3-range"        data-range="90"  onclick="setM3Range(90,this)">3M</button>
+        <button class="btn m3-range"        data-range="180" onclick="setM3Range(180,this)">6M</button>
+        <button class="btn m3-range"        data-range="365" onclick="setM3Range(365,this)">1Y</button>
+        <button class="btn m3-range"        data-range="9999" onclick="setM3Range(9999,this)">ALL</button>
+        <span style="font-size:10px;color:var(--text3);margin-left:12px;">scroll to zoom · drag to pan</span>
+      </div>
+    </div>
+
+    <div class="metric-grid" id="m3-metrics" style="margin-bottom:16px;">
+      <div class="metric-cell"><div class="metric-label">Total Adjustments</div><div class="metric-value blue" id="m3-total-adj">—</div><div class="metric-sub">in selected range</div></div>
+      <div class="metric-cell"><div class="metric-label">Increases</div><div class="metric-value green" id="m3-increases">—</div><div class="metric-sub" id="m3-increases-sub">—</div></div>
+      <div class="metric-cell"><div class="metric-label">Largest Increase</div><div class="metric-value green" id="m3-max-inc">—</div><div class="metric-sub" id="m3-max-inc-date">—</div></div>
+      <div class="metric-cell"><div class="metric-label">Largest Drop</div><div class="metric-value red" id="m3-max-drop">—</div><div class="metric-sub" id="m3-max-drop-date">—</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Bitcoin Difficulty History</div>
+        <span style="font-size:10px;color:var(--text3)">green = increase · red = decrease · hover for details</span>
+      </div>
+      <div id="m3-chart-loading" class="loading"><div class="spinner"></div> Loading difficulty data...</div>
+      <div style="position:relative;height:360px;display:none;" id="m3-main-chart-wrap">
+        <canvas id="chart-difficulty"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Block Time Ratio per Adjustment Period</div>
+        <span style="font-size:10px;color:var(--text3)">ratio = actual_time / 1,209,600s · 1.0 = perfect target</span>
+      </div>
+      <div style="position:relative;height:240px;">
+        <canvas id="chart-ratio"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Adjustment Formula — Section 6.1</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border2);padding:14px 16px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:2;">
+        <span style="color:var(--blue);font-weight:600;">D<sub>new</sub></span> =
+        <span style="color:var(--text);">D<sub>old</sub></span> x
+        <span style="color:var(--orange);">(t<sub>actual</sub> / t<sub>expected</sub>)</span>
+        &nbsp;&nbsp;where&nbsp;&nbsp;
+        <span style="color:var(--text3);">t<sub>expected</sub> = 2016 x 600 = 1,209,600 s</span>
+        <br>
+        <span style="font-size:10px;color:var(--text3);">Capped at x4 / x0.25 per period to prevent extreme jumps.</span>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Height</th><th>Old Difficulty</th><th>Ratio</th><th>Predicted D</th><th>Actual D</th><th>Error</th><th>Change</th></tr></thead>
+        <tbody id="m3-formula-tbody"><tr><td colspan="8" style="color:var(--text3);text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
   </div>
   <div id="tab-m4" class="tab-page">
     <div class="page-header"><div class="page-title">Module 04 <span>AI — Anomaly Detector</span></div></div>
@@ -416,10 +479,10 @@ function switchTab(id,btn) {
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
-  // If navigating to M2 with a pending hash
   if (id==='m2' && pendingHashForM2) {
     setTimeout(()=>{ loadM2WithHash(pendingHashForM2); pendingHashForM2=null; },100);
   }
+  if (id==='m3' && !m3Loaded) loadM3();
 }
 
 // CLOCK
@@ -990,6 +1053,239 @@ async function loadM2Compare() {
   } catch(e) {
     container.innerHTML = '<div style="color:var(--red);font-size:11px;">⚠ Could not load comparison block</div>';
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// M3 — DIFFICULTY HISTORY
+// ══════════════════════════════════════════════════════════════════
+
+let m3AdjData = [];
+let m3RangeDays = 30;
+let chartDifficulty = null;
+let chartRatio = null;
+let m3Loaded = false;
+
+function setM3Range(days, btn) {
+  m3RangeDays = days;
+  document.querySelectorAll('.m3-range').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (m3Loaded) renderM3Charts();
+}
+
+async function loadM3() {
+  document.getElementById('m3-chart-loading').style.display = 'flex';
+  document.getElementById('m3-main-chart-wrap').style.display = 'none';
+  try {
+    const raw = await fetch(`${API}/v1/mining/difficulty-adjustments`).then(r => r.json());
+    m3AdjData = [];
+    for (const item of raw) {
+      try {
+        let ts, height, diff, ratio;
+        if (Array.isArray(item)) { ts=item[0]; height=item[1]; diff=item[2]; ratio=item[3]; }
+        else { ts=item.time||item.timestamp; height=item.height; diff=item.difficulty; ratio=item.adjustment||item.ratio||1; }
+        if (ts && diff) m3AdjData.push({ ts:parseInt(ts), height:parseInt(height), diff:parseFloat(diff), ratio:parseFloat(ratio), changePct:(parseFloat(ratio)-1)*100 });
+      } catch(e) {}
+    }
+    m3AdjData.sort((a,b) => a.ts - b.ts);
+    m3Loaded = true;
+    renderM3Charts();
+    document.getElementById('m3-chart-loading').style.display = 'none';
+    document.getElementById('m3-main-chart-wrap').style.display = 'block';
+  } catch(e) {
+    console.error('M3 failed:', e);
+    document.getElementById('m3-chart-loading').innerHTML = '<span style="color:var(--red)">⚠ Failed to load data</span>';
+  }
+}
+
+function filterM3Data() {
+  if (m3RangeDays >= 9999) return m3AdjData;
+  const cutoff = Date.now()/1000 - m3RangeDays * 86400;
+  return m3AdjData.filter(d => d.ts >= cutoff);
+}
+
+function renderM3Charts() {
+  const data = filterM3Data();
+  if (!data.length) return;
+
+  renderM3Summary(data);
+  renderM3DifficultyChart(data);
+  renderM3RatioChart(data);
+  renderM3FormulaTable(data);
+}
+
+function renderM3Summary(data) {
+  const increases = data.filter(d => d.changePct > 0);
+  const maxInc = data.reduce((a,b) => b.changePct > a.changePct ? b : a, data[0]);
+  const maxDrop = data.reduce((a,b) => b.changePct < a.changePct ? b : a, data[0]);
+
+  document.getElementById('m3-total-adj').textContent = data.length;
+  document.getElementById('m3-increases').textContent = increases.length;
+  document.getElementById('m3-increases-sub').textContent = 'vs ' + (data.length - increases.length) + ' decreases';
+  document.getElementById('m3-max-inc').textContent = '+' + maxInc.changePct.toFixed(1) + '%';
+  document.getElementById('m3-max-inc-date').textContent = new Date(maxInc.ts*1000).toISOString().slice(0,10);
+  document.getElementById('m3-max-drop').textContent = maxDrop.changePct.toFixed(1) + '%';
+  document.getElementById('m3-max-drop-date').textContent = new Date(maxDrop.ts*1000).toISOString().slice(0,10);
+}
+
+function renderM3DifficultyChart(data) {
+  const labels = data.map(d => new Date(d.ts*1000).toISOString().slice(0,10));
+  const diffs  = data.map(d => d.diff / 1e12);
+  const pointColors = data.map(d => d.changePct >= 0 ? 'rgba(0,255,136,0.8)' : 'rgba(255,68,102,0.8)');
+  const pointRadius = data.map(d => Math.abs(d.changePct) > 5 ? 5 : 3);
+
+  // Find China ban (biggest drop)
+  const chinaIdx = data.indexOf(data.reduce((a,b) => b.changePct < a.changePct ? b : a, data[0]));
+
+  const ctx = document.getElementById('chart-difficulty').getContext('2d');
+  if (chartDifficulty) chartDifficulty.destroy();
+  chartDifficulty = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Difficulty (T)',
+        data: diffs,
+        borderColor: '#3b82f6',
+        borderWidth: 1.5,
+        backgroundColor: 'rgba(59,130,246,0.06)',
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        pointRadius: pointRadius,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111118',
+          titleColor: '#00d4ff',
+          bodyColor: '#8888aa',
+          borderColor: '#2a2a3e',
+          borderWidth: 1,
+          callbacks: {
+            title: ctx => labels[ctx[0].dataIndex],
+            afterBody: ctx => {
+              const d = data[ctx[0].dataIndex];
+              const sign = d.changePct >= 0 ? '+' : '';
+              return [
+                'Change: ' + sign + d.changePct.toFixed(2) + '%',
+                'Height: #' + fmt(d.height),
+                d.changePct <= -20 ? '⚠ Major hashrate event' : ''
+              ].filter(Boolean);
+            }
+          }
+        },
+        annotation: {
+          annotations: {
+            chinaLine: {
+              type: 'line',
+              xMin: chinaIdx, xMax: chinaIdx,
+              borderColor: 'rgba(255,68,102,0.6)',
+              borderWidth: 1.5,
+              borderDash: [4,3],
+              label: {
+                display: true,
+                content: '▼ China ban -27.9%',
+                color: '#ff4466',
+                backgroundColor: 'rgba(255,68,102,0.15)',
+                font: { size: 10, family: 'IBM Plex Mono' },
+                position: 'start',
+              }
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color:'#4a4a6a', font:{size:9,family:'IBM Plex Mono'}, maxTicksLimit:8 }, grid:{color:'#1e1e2e'} },
+        y: { ticks: { color:'#4a4a6a', font:{size:9,family:'IBM Plex Mono'}, callback: v => v.toFixed(0)+'T' }, grid:{color:'#1e1e2e'}, title:{display:true,text:'Difficulty (T)',color:'#4a4a6a',font:{size:9}} }
+      }
+    }
+  });
+}
+
+function renderM3RatioChart(data) {
+  const labels = data.map(d => new Date(d.ts*1000).toISOString().slice(0,7));
+  const ratios = data.map(d => d.ratio);
+  const barColors = ratios.map(r => {
+    if (Math.abs(r-1) < 0.05) return 'rgba(0,255,136,0.6)';
+    if (Math.abs(r-1) < 0.15) return 'rgba(255,140,0,0.6)';
+    return 'rgba(255,68,102,0.6)';
+  });
+
+  const ctx = document.getElementById('chart-ratio').getContext('2d');
+  if (chartRatio) chartRatio.destroy();
+  chartRatio = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Block time ratio',
+        data: ratios,
+        backgroundColor: barColors,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111118', titleColor: '#ff8c00', bodyColor: '#8888aa', borderColor: '#2a2a3e', borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const r = ctx.parsed.y;
+              const avgBT = (r * 600).toFixed(0);
+              return ['Ratio: ' + r.toFixed(4), 'Avg block time: ' + avgBT + 's', r > 1 ? '→ difficulty will decrease' : '→ difficulty will increase'];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:10}, grid:{color:'#1e1e2e'} },
+        y: { ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#1e1e2e'},
+             min: 0.5, max: 1.5,
+             title:{display:true,text:'Ratio (actual/target)',color:'#4a4a6a',font:{size:9}} }
+      }
+    }
+  });
+
+  // Add target line manually via annotation
+  const target = chartRatio.options.plugins.annotation;
+  if (target) {
+    target.annotations = { targetLine: { type:'line', yMin:1, yMax:1, borderColor:'rgba(255,255,255,0.3)', borderWidth:1, borderDash:[4,3] } };
+    chartRatio.update();
+  }
+}
+
+function renderM3FormulaTable(data) {
+  const tbody = document.getElementById('m3-formula-tbody');
+  const recent = data.slice(-10);
+  const rows = [];
+  for (let i = 1; i < recent.length; i++) {
+    const prev = recent[i-1], curr = recent[i];
+    const predicted = prev.diff * prev.ratio;
+    const errorPct  = ((curr.diff - predicted) / predicted * 100);
+    const sign      = curr.changePct >= 0 ? '+' : '';
+    const errSign   = errorPct >= 0 ? '+' : '';
+    const changeColor = curr.changePct >= 0 ? 'var(--green)' : 'var(--red)';
+    rows.push(`<tr>
+      <td>${new Date(curr.ts*1000).toISOString().slice(0,10)}</td>
+      <td class="blue">#${fmt(curr.height)}</td>
+      <td style="font-size:10px;">${fmt(prev.diff/1e12,2)}T</td>
+      <td>${prev.ratio.toFixed(4)}</td>
+      <td style="font-size:10px;color:var(--orange);">${fmt(predicted/1e12,2)}T</td>
+      <td style="font-size:10px;">${fmt(curr.diff/1e12,2)}T</td>
+      <td style="color:${Math.abs(errorPct)>5?'var(--red)':'var(--text3)'}">${errSign}${errorPct.toFixed(2)}%</td>
+      <td style="color:${changeColor};font-weight:600;">${sign}${curr.changePct.toFixed(1)}%</td>
+    </tr>`);
+  }
+  tbody.innerHTML = rows.join('') || '<tr><td colspan="8" style="color:var(--text3);text-align:center;">No data</td></tr>';
 }
 
 // INIT
