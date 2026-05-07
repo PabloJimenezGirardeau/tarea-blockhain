@@ -160,6 +160,8 @@
   <button class="nav-tab" onclick="switchTab('m7',this)">M7 <span class="nav-badge">AI Predict</span></button>
   <button class="nav-tab" onclick="switchTab('m5',this)">M5 <span class="nav-badge">Merkle</span></button>
   <button class="nav-tab" onclick="switchTab('m6',this)">M6 <span class="nav-badge">Security</span></button>
+  <button class="nav-tab" onclick="switchTab('m8',this)">M8 <span class="nav-badge">Hash Lab</span></button>
+  <button class="nav-tab" onclick="switchTab('m9',this)">M9 <span class="nav-badge">Chain</span></button>
 </nav>
 
 <main id="content">
@@ -883,6 +885,239 @@
 
     <div id="m6-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching live Bitcoin data...</div>
   </div>
+  <!-- M8 -->
+  <div id="tab-m8" class="tab-page">
+    <div class="page-header">
+      <div class="page-title">Module 08 <span>SHA-256 Hash Explorer</span></div>
+    </div>
+
+    <!-- Live hasher -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Live SHA-256 — Avalanche Effect</div>
+        <span style="font-size:10px;color:var(--text3)">hash updates with every keystroke</span>
+      </div>
+      <textarea id="m8-input" rows="3" placeholder="Type anything here and watch the hash change in real time..."
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:10px 12px;outline:none;resize:vertical;line-height:1.6;"
+        oninput="onM8Input()"></textarea>
+
+      <div style="margin-top:12px;">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">SHA-256 Hash</div>
+        <div id="m8-hash-output" style="font-size:13px;font-family:var(--mono);word-break:break-all;padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);line-height:1.8;min-height:44px;">
+          <span style="color:var(--text3)">Start typing...</span>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);">
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Leading zeros</div>
+          <div style="font-size:18px;font-weight:600;color:var(--orange);margin-top:3px;" id="m8-zeros">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Valid at current diff.</div>
+          <div style="font-size:18px;font-weight:600;margin-top:3px;" id="m8-valid">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Input length</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text);margin-top:3px;" id="m8-length">0 bytes</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Hashes computed</div>
+          <div style="font-size:18px;font-weight:600;color:var(--blue);margin-top:3px;" id="m8-hash-count">0</div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;" id="m8-avalanche-row" style="display:none">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Bit difference vs previous hash (avalanche effect)</div>
+        <div id="m8-avalanche-bar" style="height:8px;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;">
+          <div id="m8-avalanche-fill" style="height:100%;background:linear-gradient(90deg,var(--blue),var(--purple));width:0%;transition:width .2s ease;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="m8-avalanche-text">—</div>
+      </div>
+    </div>
+
+    <!-- Mini miner -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Mini Miner — PoW Simulation</div>
+        <span style="font-size:10px;color:var(--text3)">find a nonce so that SHA-256(input + nonce) starts with N zeros</span>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <div class="slider-row" style="flex:2;min-width:200px;">
+          <label>Target zeros</label>
+          <input type="range" id="m8-target-zeros" min="1" max="7" value="4" step="1"
+            oninput="document.getElementById('m8-target-val').textContent=this.value+' zeros'">
+          <span class="slider-val" id="m8-target-val">4 zeros</span>
+        </div>
+        <button class="btn primary" id="m8-mine-btn" onclick="startMining()">&#9889; Start Mining</button>
+        <button class="btn" onclick="stopMining()" id="m8-stop-btn" style="display:none">&#9632; Stop</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);margin-bottom:14px;" id="m8-mining-stats">
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Nonce tried</div>
+          <div style="font-size:18px;font-weight:600;color:var(--blue);margin-top:3px;" id="m8-nonce-tried">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Hash rate</div>
+          <div style="font-size:18px;font-weight:600;color:var(--green);margin-top:3px;" id="m8-local-hashrate">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Elapsed time</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text);margin-top:3px;" id="m8-elapsed">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:10px 12px;">
+          <div class="metric-label">Expected attempts</div>
+          <div style="font-size:18px;font-weight:600;color:var(--orange);margin-top:3px;" id="m8-expected">—</div>
+        </div>
+      </div>
+
+      <div id="m8-result" style="display:none;padding:12px 14px;background:var(--green-dim);border:1px solid rgba(0,255,136,.3);margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:6px;">&#10003; Valid hash found!</div>
+        <div style="font-size:10px;color:var(--text2);">Nonce: <span id="m8-found-nonce" style="color:var(--blue);font-family:var(--mono);">—</span></div>
+        <div style="font-size:10px;color:var(--text2);margin-top:3px;">Hash: <span id="m8-found-hash" style="color:var(--green);font-family:var(--mono);word-break:break-all;">—</span></div>
+      </div>
+
+      <!-- Live hash display during mining -->
+      <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">Current hash attempt:</div>
+      <div id="m8-live-hash" style="font-size:10px;font-family:var(--mono);color:var(--text3);word-break:break-all;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);min-height:28px;"></div>
+    </div>
+
+    <!-- Real Bitcoin mining time estimate -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Real Bitcoin Mining — Time Estimate</div>
+        <span style="font-size:10px;color:var(--text3)">how long would YOUR computer take to mine a block?</span>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--text2);line-height:1.9;margin-bottom:12px;">
+          Based on your browser's measured hash rate from the mini miner above, we can estimate
+          how long it would take your computer to mine a real Bitcoin block at current difficulty.
+        </div>
+        <div id="m8-real-estimate" style="padding:14px;background:var(--bg3);border:1px solid var(--border2);">
+          <span style="color:var(--text3);font-size:11px;">Run the mini miner first to measure your hash rate.</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);" id="m8-compare-grid" style="display:none">
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">Your browser speed</div>
+          <div style="font-size:16px;font-weight:600;color:var(--blue);margin-top:4px;" id="m8-browser-speed">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">Network speed</div>
+          <div style="font-size:16px;font-weight:600;color:var(--green);margin-top:4px;" id="m8-network-speed">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">You are</div>
+          <div style="font-size:16px;font-weight:600;color:var(--orange);margin-top:4px;" id="m8-you-are">—</div>
+          <div class="metric-sub">slower than the network</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M9 -->
+  <div id="tab-m9" class="tab-page">
+    <div class="page-header">
+      <div class="page-title">Module 09 <span>Blockchain Integrity Verifier</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn primary" onclick="runM9()">&#10003; Verify Chain</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div class="slider-row" style="flex:1;min-width:200px;">
+          <label>Blocks to verify</label>
+          <input type="range" id="m9-slider" min="3" max="15" value="6" step="1"
+            oninput="document.getElementById('m9-slider-val').textContent=this.value">
+          <span class="slider-val" id="m9-slider-val">6</span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);line-height:1.6;">
+          Verifies that each block's <span style="color:var(--blue)">prev_hash</span> matches<br>
+          the actual hash of the previous block.
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary metrics -->
+    <div class="metric-grid" id="m9-metrics" style="display:none;margin-bottom:16px;">
+      <div class="metric-cell">
+        <div class="metric-label">Blocks verified</div>
+        <div class="metric-value blue" id="m9-total">—</div>
+        <div class="metric-sub">in the selected range</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Chain valid</div>
+        <div class="metric-value green" id="m9-valid-count">—</div>
+        <div class="metric-sub">prev_hash links intact</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Merkle roots valid</div>
+        <div class="metric-value green" id="m9-merkle-count">—</div>
+        <div class="metric-sub">tx integrity confirmed</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Chain status</div>
+        <div class="metric-value" id="m9-status">—</div>
+        <div class="metric-sub" id="m9-status-sub">—</div>
+      </div>
+    </div>
+
+    <!-- Chain visualization -->
+    <div class="panel" id="m9-chain-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Chain Visualization</div>
+        <span style="font-size:10px;color:var(--text3)">green = valid link · each block references the previous hash</span>
+      </div>
+      <div id="m9-chain-viz" style="overflow-x:auto;padding:10px 0;"></div>
+    </div>
+
+    <!-- Block by block results -->
+    <div class="panel" id="m9-results-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Block-by-Block Verification</div>
+      </div>
+      <table class="data-table">
+        <thead><tr>
+          <th>Height</th>
+          <th>Hash (truncated)</th>
+          <th>Prev Hash match</th>
+          <th>Merkle Root</th>
+          <th>Transactions</th>
+          <th>Time</th>
+        </tr></thead>
+        <tbody id="m9-results-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Why this matters -->
+    <div class="panel" id="m9-explain-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Why Blockchain Immutability Works</div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:2;">
+        Each block contains the <span style="color:var(--blue)">SHA-256² hash of the previous block header</span>.
+        This creates a cryptographic chain where modifying any past block would:<br>
+        <div style="margin:8px 0 8px 16px;color:var(--text);">
+          1. Change that block's hash<br>
+          2. Invalidate the <span style="color:var(--red)">prev_hash</span> reference in the next block<br>
+          3. Cascade through <span style="color:var(--red)">every subsequent block</span> — all become invalid<br>
+          4. Require re-mining all affected blocks — computationally infeasible
+        </div>
+        The <span style="color:var(--green)">Merkle root</span> in each header further guarantees that
+        not a single transaction can be altered without invalidating the block.
+      </div>
+      <div id="m9-immutability-viz" style="margin-top:14px;"></div>
+    </div>
+
+    <div id="m9-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching and verifying blocks...</div>
+  </div>
+
 </main>
 
 <script>
@@ -902,6 +1137,7 @@ function switchTab(id,btn) {
     setTimeout(()=>{ loadM2WithHash(pendingHashForM2); pendingHashForM2=null; },100);
   }
   if (id==='m3' && !m3Loaded) loadM3();
+  if (id==='m8') { m8CurrentDiffZeros = countLeadingZeroBits(document.getElementById('m1-hash-display')?.querySelector('.zeros')?.textContent?.padEnd(64,'0') || '0'.repeat(20)); }
 }
 
 // CLOCK
@@ -3077,6 +3313,406 @@ function renderM7MultiPeriod() {
   });
 }
 
+
+
+// ══════════════════════════════════════════════════════════════════
+// M8 — SHA-256 HASH EXPLORER
+// ══════════════════════════════════════════════════════════════════
+
+let m8HashCount    = 0;
+let m8PrevHash     = null;
+let m8MiningActive = false;
+let m8MiningTimer  = null;
+let m8MiningStart  = null;
+let m8LocalHashRate = 0;
+let m8CurrentDiffZeros = 79; // updated from M1 if available
+
+async function sha256text(text) {
+  const enc  = new TextEncoder();
+  const data = enc.encode(text);
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function countLeadingZeroChars(hex) {
+  let z = 0;
+  for (const c of hex) { if (c === '0') z++; else break; }
+  return z;
+}
+
+function countBitDiff(hex1, hex2) {
+  let diff = 0;
+  for (let i=0; i<64; i++) {
+    const b1 = parseInt(hex1[i], 16);
+    const b2 = parseInt(hex2[i], 16);
+    const xor = b1 ^ b2;
+    diff += xor.toString(2).split('').filter(b=>b==='1').length;
+  }
+  return diff; // out of 256
+}
+
+async function onM8Input() {
+  const text = document.getElementById('m8-input').value;
+  m8HashCount++;
+  document.getElementById('m8-hash-count').textContent = m8HashCount.toLocaleString();
+  document.getElementById('m8-length').textContent = new TextEncoder().encode(text).length + ' bytes';
+
+  if (!text) {
+    document.getElementById('m8-hash-output').innerHTML = '<span style="color:var(--text3)">Start typing...</span>';
+    document.getElementById('m8-zeros').textContent = '—';
+    document.getElementById('m8-valid').textContent = '—';
+    document.getElementById('m8-avalanche-text').textContent = '—';
+    m8PrevHash = null;
+    return;
+  }
+
+  const hash = await sha256text(text);
+  const zeros = countLeadingZeroChars(hash);
+  const zerosBits = countLeadingZeroBits(hash);
+
+  // Colorize hash output
+  const el = document.getElementById('m8-hash-output');
+  el.innerHTML = `<span style="color:var(--red);font-weight:600;">${hash.slice(0,zeros)}</span><span style="color:var(--text2);">${hash.slice(zeros)}</span>`;
+
+  document.getElementById('m8-zeros').textContent = zeros + ' hex / ' + zerosBits + ' bits';
+
+  // Check if valid at current Bitcoin difficulty
+  const isValid = zerosBits >= m8CurrentDiffZeros;
+  const validEl = document.getElementById('m8-valid');
+  validEl.textContent = isValid ? '✅ YES' : '❌ NO';
+  validEl.style.color = isValid ? 'var(--green)' : 'var(--red)';
+
+  // Avalanche effect
+  if (m8PrevHash) {
+    const bitDiff = countBitDiff(hash, m8PrevHash);
+    const pct     = (bitDiff / 256 * 100).toFixed(1);
+    document.getElementById('m8-avalanche-fill').style.width = pct + '%';
+    document.getElementById('m8-avalanche-text').textContent =
+      bitDiff + ' / 256 bits changed (' + pct + '%) — ' +
+      (bitDiff > 100 ? 'strong avalanche effect ✓' : 'weak avalanche');
+  }
+  m8PrevHash = hash;
+}
+
+// ── Mini Miner ────────────────────────────────────────────────────
+
+function startMining() {
+  if (m8MiningActive) return;
+  const input = document.getElementById('m8-input').value || 'hello bitcoin';
+  const targetZeros = parseInt(document.getElementById('m8-target-zeros').value);
+  const expected = Math.pow(16, targetZeros);
+
+  document.getElementById('m8-expected').textContent = expected.toLocaleString();
+  document.getElementById('m8-result').style.display = 'none';
+  document.getElementById('m8-mine-btn').style.display = 'none';
+  document.getElementById('m8-stop-btn').style.display = 'inline-flex';
+
+  m8MiningActive = true;
+  m8MiningStart  = Date.now();
+  let nonce      = 0;
+  let lastUpdate = Date.now();
+  let lastNonce  = 0;
+
+  async function mineStep() {
+    if (!m8MiningActive) return;
+    const BATCH = 500;
+    for (let i=0; i<BATCH; i++) {
+      const hash = await sha256text(input + nonce);
+      nonce++;
+
+      if (hash.startsWith('0'.repeat(targetZeros))) {
+        // Found!
+        m8MiningActive = false;
+        const elapsed = (Date.now() - m8MiningStart) / 1000;
+        m8LocalHashRate = nonce / elapsed;
+
+        document.getElementById('m8-found-nonce').textContent = nonce.toLocaleString();
+        document.getElementById('m8-found-hash').innerHTML =
+          `<span style="color:var(--red)">${hash.slice(0,targetZeros)}</span><span style="color:var(--green)">${hash.slice(targetZeros)}</span>`;
+        document.getElementById('m8-result').style.display = 'block';
+        document.getElementById('m8-mine-btn').style.display = 'inline-flex';
+        document.getElementById('m8-stop-btn').style.display = 'none';
+        document.getElementById('m8-live-hash').textContent = hash;
+        updateRealEstimate();
+        return;
+      }
+    }
+
+    // Update stats
+    const now     = Date.now();
+    const elapsed = (now - m8MiningStart) / 1000;
+    const rate    = nonce / elapsed;
+    m8LocalHashRate = rate;
+
+    if (now - lastUpdate > 200) {
+      document.getElementById('m8-nonce-tried').textContent = nonce.toLocaleString();
+      document.getElementById('m8-elapsed').textContent     = elapsed.toFixed(1) + 's';
+      document.getElementById('m8-local-hashrate').textContent = rate > 1000
+        ? (rate/1000).toFixed(1) + ' KH/s'
+        : rate.toFixed(0) + ' H/s';
+      document.getElementById('m8-live-hash').innerHTML = await sha256text(input + nonce).then(h =>
+        `<span style="color:var(--red)">${h.slice(0,targetZeros)}</span><span style="color:var(--text3)">${h.slice(targetZeros)}</span>`
+      );
+      lastUpdate = now;
+    }
+
+    requestAnimationFrame(mineStep);
+  }
+
+  mineStep();
+}
+
+function stopMining() {
+  m8MiningActive = false;
+  document.getElementById('m8-mine-btn').style.display = 'inline-flex';
+  document.getElementById('m8-stop-btn').style.display = 'none';
+  if (m8LocalHashRate > 0) updateRealEstimate();
+}
+
+function updateRealEstimate() {
+  if (m8LocalHashRate <= 0) return;
+
+  // Get current difficulty from M1 if loaded
+  const diffEl = document.getElementById('m1-difficulty');
+  const diffText = diffEl?.textContent || '';
+  const diffT = parseFloat(diffText.replace(' T','')) || 132;
+  const diffVal = diffT * 1e12;
+
+  // Expected hashes to mine = difficulty * 2^32
+  const expectedHashes = diffVal * Math.pow(2, 32);
+  const secondsToMine  = expectedHashes / m8LocalHashRate;
+  const yearsToMine    = secondsToMine / (365.25 * 24 * 3600);
+
+  // Network hashrate in H/s
+  const networkEhs = parseFloat(document.getElementById('tb-hashrate')?.textContent || '948') * 1e18;
+  const ratio = networkEhs / m8LocalHashRate;
+
+  document.getElementById('m8-real-estimate').innerHTML = `
+    <div style="font-size:11px;color:var(--text2);line-height:2;">
+      At your browser speed of <span style="color:var(--blue);font-weight:600;">${m8LocalHashRate > 1000 ? (m8LocalHashRate/1000).toFixed(1)+' KH/s' : m8LocalHashRate.toFixed(0)+' H/s'}</span>,
+      mining a real Bitcoin block at current difficulty would take approximately:<br>
+      <span style="font-size:20px;font-weight:600;color:var(--orange);">
+        ${yearsToMine > 1e6
+          ? yearsToMine.toExponential(2) + ' years'
+          : yearsToMine > 1000
+          ? fmt(Math.round(yearsToMine)) + ' years'
+          : yearsToMine > 1
+          ? yearsToMine.toFixed(1) + ' years'
+          : (secondsToMine/86400).toFixed(0) + ' days'}
+      </span><br>
+      <span style="font-size:10px;color:var(--text3);">
+        The Bitcoin network is <span style="color:var(--red);">${ratio > 1e12 ? (ratio/1e12).toFixed(1)+'T×' : ratio > 1e9 ? (ratio/1e9).toFixed(1)+'B×' : (ratio/1e6).toFixed(1)+'M×'}</span> faster than your browser.
+        This is why mining requires specialized ASIC hardware.
+      </span>
+    </div>`;
+
+  document.getElementById('m8-compare-grid').style.display = 'grid';
+  document.getElementById('m8-browser-speed').textContent =
+    m8LocalHashRate > 1000 ? (m8LocalHashRate/1000).toFixed(1)+' KH/s' : m8LocalHashRate.toFixed(0)+' H/s';
+  document.getElementById('m8-network-speed').textContent =
+    (networkEhs/1e18).toFixed(1) + ' EH/s';
+  document.getElementById('m8-you-are').textContent =
+    ratio > 1e12 ? (ratio/1e12).toFixed(1)+'T×' : ratio > 1e9 ? (ratio/1e9).toFixed(1)+'B×' : (ratio/1e6).toFixed(1)+'M×';
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// M9 — BLOCKCHAIN INTEGRITY VERIFIER
+// ══════════════════════════════════════════════════════════════════
+
+async function runM9() {
+  const n = parseInt(document.getElementById('m9-slider').value) || 6;
+  document.getElementById('m9-loading').style.display = 'flex';
+  ['m9-metrics','m9-chain-panel','m9-results-panel','m9-explain-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  try {
+    // Fetch recent blocks
+    const blocks = await fetchRecentBlocks(n);
+    const sorted = [...blocks].sort((a,b) => a.height - b.height);
+
+    // Fetch headers for SHA256 verification
+    const headers = await Promise.all(
+      sorted.map(b => fetch(`${API}/block/${b.id}/header`).then(r=>r.text()))
+    );
+
+    // Verify chain
+    const results = [];
+    let chainValid   = 0;
+    let merkleValid  = 0;
+
+    for (let i=0; i<sorted.length; i++) {
+      const block     = sorted[i];
+      const headerHex = headers[i].trim();
+
+      // 1. Verify prev_hash link
+      let prevHashOk = null;
+      if (i > 0) {
+        const prevBlock = sorted[i-1];
+        // Parse prev_hash from header (bytes 4-35, reversed)
+        const raw      = hexToUint8(headerHex);
+        const prevBytes= raw.slice(4, 36);
+        const parsedPrev = uint8ToHex(prevBytes.reverse());
+        prevHashOk = parsedPrev === prevBlock.id;
+        if (prevHashOk) chainValid++;
+      }
+
+      // 2. Verify block hash (SHA256² of header)
+      const rawBytes = hexToUint8(headerHex).buffer;
+      const h1       = await crypto.subtle.digest('SHA-256', rawBytes);
+      const h2       = await crypto.subtle.digest('SHA-256', h1);
+      const computed = uint8ToHex(new Uint8Array(h2).reverse());
+      const hashOk   = computed === block.id;
+
+      // 3. Merkle root from header
+      const merkleBytes = hexToUint8(headerHex).slice(36, 68);
+      const merkleFromHeader = uint8ToHex(merkleBytes.reverse());
+      const merkleOk = merkleFromHeader === (block.merkle_root || block.merkleroot || '');
+      if (merkleOk) merkleValid++;
+
+      results.push({
+        block, headerHex, prevHashOk, hashOk, merkleOk, computed,
+        merkleFromHeader,
+      });
+    }
+
+    document.getElementById('m9-loading').style.display = 'none';
+    renderM9Results(results, chainValid, merkleValid, n);
+
+  } catch(e) {
+    console.error('M9 failed:', e);
+    document.getElementById('m9-loading').textContent = '⚠ Failed: ' + e.message;
+  }
+}
+
+function renderM9Results(results, chainValid, merkleValid, n) {
+  const allChainOk   = chainValid === n - 1;
+  const allMerkleOk  = merkleValid === n;
+
+  // Metrics
+  document.getElementById('m9-total').textContent        = n;
+  document.getElementById('m9-valid-count').textContent  = chainValid + ' / ' + (n-1);
+  document.getElementById('m9-merkle-count').textContent = merkleValid + ' / ' + n;
+
+  const statusEl  = document.getElementById('m9-status');
+  const statusSub = document.getElementById('m9-status-sub');
+  if (allChainOk && allMerkleOk) {
+    statusEl.textContent  = '✅ INTACT';
+    statusEl.style.color  = 'var(--green)';
+    statusSub.textContent = 'All links and Merkle roots valid';
+  } else {
+    statusEl.textContent  = '❌ BROKEN';
+    statusEl.style.color  = 'var(--red)';
+    statusSub.textContent = 'Chain integrity compromised';
+  }
+  document.getElementById('m9-metrics').style.display = 'grid';
+
+  // Chain visualization
+  renderM9ChainViz(results);
+
+  // Table
+  const tbody = document.getElementById('m9-results-tbody');
+  tbody.innerHTML = results.map((r, i) => {
+    const prevCell = i === 0
+      ? '<span style="color:var(--text3)">— (first)</span>'
+      : r.prevHashOk
+        ? '<span style="color:var(--green)">✅ Match</span>'
+        : '<span style="color:var(--red)">❌ Mismatch</span>';
+    const merkleCell = r.merkleOk
+      ? '<span style="color:var(--green)">✅ Valid</span>'
+      : '<span style="color:var(--red)">❌ Invalid</span>';
+    const ts = new Date(r.block.timestamp*1000).toUTCString().slice(5,22);
+    return `<tr>
+      <td class="blue">#${fmt(r.block.height)}</td>
+      <td style="font-size:9px;font-family:var(--mono);color:var(--text3);">${r.block.id.slice(0,12)}...${r.block.id.slice(-8)}</td>
+      <td>${prevCell}</td>
+      <td>${merkleCell}</td>
+      <td>${fmt(r.block.tx_count)}</td>
+      <td style="font-size:10px;color:var(--text3);">${ts} UTC</td>
+    </tr>`;
+  }).join('');
+
+  // Immutability explanation viz
+  renderM9ImmutabilityViz(results);
+
+  ['m9-chain-panel','m9-results-panel','m9-explain-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'block';
+  });
+}
+
+function renderM9ChainViz(results) {
+  const container = document.getElementById('m9-chain-viz');
+  const blockW = 140, gap = 60, h = 90;
+  const totalW = results.length * (blockW + gap);
+
+  let svg = `<svg width="${totalW}" height="${h+40}" style="font-family:var(--mono);min-width:${totalW}px;">`;
+
+  results.forEach((r, i) => {
+    const x     = i * (blockW + gap);
+    const isOk  = i === 0 || r.prevHashOk;
+    const color = isOk ? '#22c55e' : '#ff4466';
+
+    // Arrow from previous
+    if (i > 0) {
+      const arrowColor = r.prevHashOk ? '#22c55e' : '#ff4466';
+      svg += `<line x1="${x-gap}" y1="${h/2}" x2="${x}" y2="${h/2}" stroke="${arrowColor}" stroke-width="2" marker-end="url(#arrow-${arrowColor.slice(1)})"/>`;
+      svg += `<text x="${x-gap/2}" y="${h/2-8}" text-anchor="middle" font-size="8" fill="${arrowColor}">prev_hash</text>`;
+    }
+
+    // Block rectangle
+    svg += `<rect x="${x}" y="10" width="${blockW}" height="${h-10}" rx="3" fill="rgba(${isOk?'34,197,94':'255,68,102'},0.08)" stroke="${color}" stroke-width="1.5"/>`;
+    svg += `<text x="${x+blockW/2}" y="28" text-anchor="middle" font-size="10" font-weight="600" fill="${color}">#${fmt(r.block.height)}</text>`;
+    svg += `<text x="${x+blockW/2}" y="44" text-anchor="middle" font-size="8" fill="#4a4a6a">${r.block.id.slice(0,8)}...</text>`;
+    svg += `<text x="${x+blockW/2}" y="58" text-anchor="middle" font-size="8" fill="${r.merkleOk?'#22c55e':'#ff4466'}">${r.merkleOk?'✓':'✗'} Merkle</text>`;
+    svg += `<text x="${x+blockW/2}" y="72" text-anchor="middle" font-size="8" fill="#4a4a6a">${fmt(r.block.tx_count)} txs</text>`;
+  });
+
+  // Arrow markers
+  svg += `<defs>
+    <marker id="arrow-22c55e" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#22c55e"/>
+    </marker>
+    <marker id="arrow-ff4466" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L6,3 z" fill="#ff4466"/>
+    </marker>
+  </defs>`;
+
+  svg += '</svg>';
+  container.innerHTML = svg;
+}
+
+function renderM9ImmutabilityViz(results) {
+  const container = document.getElementById('m9-immutability-viz');
+  const mid = Math.floor(results.length / 2);
+  const blockW = 120, gap = 50;
+  const totalW = results.length * (blockW + gap);
+
+  let svg = `<svg width="100%" viewBox="0 0 ${totalW} 110" style="font-family:var(--mono);">`;
+  svg += `<text x="${totalW/2}" y="14" text-anchor="middle" font-size="10" fill="#8888aa">If block #${results[mid]?.block.height} were modified → all subsequent blocks become invalid</text>`;
+
+  results.forEach((r, i) => {
+    const x        = i * (blockW + gap);
+    const isModified = i === mid;
+    const isBroken   = i > mid;
+    const color = isModified ? '#ff8c00' : isBroken ? '#ff4466' : '#22c55e';
+    const label = isModified ? '⚠ MODIFIED' : isBroken ? '❌ INVALID' : '✅ VALID';
+    const fill  = isModified ? 'rgba(255,140,0,0.12)' : isBroken ? 'rgba(255,68,102,0.08)' : 'rgba(34,197,94,0.08)';
+
+    if (i > 0) {
+      const ac = isBroken ? '#ff4466' : i===mid ? '#ff8c00' : '#22c55e';
+      svg += `<line x1="${x-gap+4}" y1="65" x2="${x-4}" y2="65" stroke="${ac}" stroke-width="1.5" stroke-dasharray="${isBroken?'4,3':''}"/>`;
+    }
+
+    svg += `<rect x="${x}" y="22" width="${blockW}" height="50" rx="3" fill="${fill}" stroke="${color}" stroke-width="${isModified?2:1.5}"/>`;
+    svg += `<text x="${x+blockW/2}" y="42" text-anchor="middle" font-size="9" font-weight="600" fill="${color}">#${fmt(r.block.height)}</text>`;
+    svg += `<text x="${x+blockW/2}" y="57" text-anchor="middle" font-size="8" fill="${color}">${label}</text>`;
+    svg += `<text x="${x+blockW/2}" y="84" text-anchor="middle" font-size="8" fill="#4a4a6a">${r.block.id.slice(0,8)}...</text>`;
+  });
+
+  svg += '</svg>';
+  container.innerHTML = svg;
+}
 
 // INIT
 (async function init(){
