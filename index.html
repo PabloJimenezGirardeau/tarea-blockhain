@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.2.1/chartjs-plugin-zoom.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -21,6 +23,19 @@
     --text:#e2e2f0; --text2:#8888aa; --text3:#4a4a6a;
     --mono:'IBM Plex Mono',monospace;
   }
+  body.light {
+    --bg:#f0f2f8; --bg2:#ffffff; --bg3:#e8eaf0;
+    --border:#d0d4e8; --border2:#b8bdd4;
+    --text:#1a1a2e; --text2:#4a4a6a; --text3:#8888aa;
+    --blue:#0077cc; --blue-dim:rgba(0,119,204,0.08);
+    --green:#00aa55; --green-dim:rgba(0,170,85,0.08);
+    --red:#cc2244; --red-dim:rgba(204,34,68,0.08);
+    --orange:#cc6600; --orange-dim:rgba(204,102,0,0.08);
+  }
+  body.light .live-dot { background: var(--green); }
+  body.light .hash-display { color: var(--text2); }
+  .theme-btn { background:transparent; border:1px solid var(--border2); color:var(--text2); font-family:var(--mono); font-size:10px; padding:3px 8px; cursor:pointer; letter-spacing:.05em; transition:all .15s; }
+  .theme-btn:hover { border-color:var(--blue); color:var(--blue); }
   html,body { background:var(--bg); color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5; min-height:100vh; overflow-x:hidden; }
   body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); pointer-events:none; z-index:9999; }
 
@@ -144,6 +159,7 @@
   <div class="ticker-item"><span class="ticker-label">Difficulty</span><span class="ticker-value" id="tb-difficulty">—</span></div>
   <div class="ticker-item"><span class="ticker-label">Mempool</span><span class="ticker-value" id="tb-mempool">—</span></div>
   <div class="spacer"></div>
+  <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
   <div class="clock" id="clock">—</div>
 </div>
 
@@ -449,8 +465,88 @@
     </div>
   </div>
   <div id="tab-m4" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 04 <span>AI — Anomaly Detector</span></div></div>
-    <div class="coming-soon"><div class="icon">🤖</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 04 <span>AI — Anomaly Detector</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="status-badge ok" id="m4-status" style="display:none"><span class="live-dot"></span> READY</span>
+        <button class="btn primary" onclick="loadM4(true)">↺ Run Detector</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center;">
+        <div class="slider-row">
+          <label>Blocks to analyse</label>
+          <input type="range" id="m4-slider" min="50" max="200" value="150" step="10" oninput="document.getElementById('m4-slider-val').textContent=this.value">
+          <span class="slider-val" id="m4-slider-val">150</span>
+        </div>
+        <div class="slider-row">
+          <label>Anomaly threshold (percentile)</label>
+          <input type="range" id="m4-threshold" min="1" max="20" value="5" step="1" oninput="onM4ThresholdChange(this.value)">
+          <span class="slider-val" id="m4-threshold-val">p5 / p95</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model explanation -->
+    <div class="panel" id="m4-model-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Anomaly Detection Model</div>
+        <span style="font-size:10px;color:var(--text3)">Exponential distribution · MLE parameter estimation</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:14px;">
+        Bitcoin block arrival is a <span style="color:var(--blue);">memoryless Poisson process</span> — each hash attempt is independent.
+        Inter-block times follow an <span style="color:var(--green);">Exp(λ)</span> distribution. λ is estimated via
+        <span style="color:var(--orange);">MLE: λ̂ = 1/x̄</span> rather than assuming 1/600.
+        Blocks outside the central <span id="m4-ci-label" style="color:var(--blue);">90%</span> are flagged as anomalous.
+      </div>
+      <div class="metric-grid" id="m4-metrics">
+        <div class="metric-cell"><div class="metric-label">λ MLE (from data)</div><div class="metric-value blue" id="m4-lam-mle">—</div><div class="metric-sub">estimated from actual blocks</div></div>
+        <div class="metric-cell"><div class="metric-label">λ Theoretical</div><div class="metric-value" id="m4-lam-theory">0.001667 s⁻¹</div><div class="metric-sub">= 1/600 target</div></div>
+        <div class="metric-cell"><div class="metric-label">Estimated Mean Block Time</div><div class="metric-value orange" id="m4-mean-bt">—</div><div class="metric-sub">vs target 600s</div></div>
+        <div class="metric-cell"><div class="metric-label">Blocks Analysed</div><div class="metric-value" id="m4-n-blocks">—</div><div class="metric-sub">sample size for MLE</div></div>
+        <div class="metric-cell"><div class="metric-label">Anomalies Detected</div><div class="metric-value red" id="m4-n-anomalies">—</div><div class="metric-sub" id="m4-detection-rate">—</div></div>
+        <div class="metric-cell"><div class="metric-label">KS Test p-value</div><div class="metric-value" id="m4-ks-pval">—</div><div class="metric-sub" id="m4-ks-result">—</div></div>
+      </div>
+    </div>
+
+    <!-- Timeline chart -->
+    <div class="panel" id="m4-timeline-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Inter-Block Times — Anomaly Timeline</div>
+        <span style="font-size:10px;color:var(--text3)">&#9650; fast anomaly (orange) · &#9660; slow anomaly (red) · click to inspect in M2</span>
+      </div>
+      <div style="position:relative;height:280px;">
+        <canvas id="chart-m4-timeline"></canvas>
+      </div>
+    </div>
+
+    <!-- Distribution chart -->
+    <div class="panel" id="m4-dist-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Distribution vs Exponential Baseline</div>
+        <span style="font-size:10px;color:var(--text3)">empirical histogram · MLE fit · anomaly zones</span>
+      </div>
+      <div style="position:relative;height:260px;">
+        <canvas id="chart-m4-dist"></canvas>
+      </div>
+    </div>
+
+    <!-- Anomaly table -->
+    <div class="panel" id="m4-table-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Detected Anomalies</div>
+        <span style="font-size:10px;color:var(--text3)">click block height to inspect in M2</span>
+      </div>
+      <div id="m4-no-anomalies" style="display:none;padding:20px;text-align:center;color:var(--green);font-size:11px;">&#10003; No anomalies detected in the analysed blocks</div>
+      <table class="data-table" id="m4-anomaly-table" style="display:none">
+        <thead><tr><th>Block Height</th><th>Inter-block Time</th><th>Percentile</th><th>Type</th><th>Deviation</th></tr></thead>
+        <tbody id="m4-anomaly-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="m4-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching blocks & running anomaly detector...</div>
   </div>
   <div id="tab-m7" class="tab-page">
     <div class="page-header"><div class="page-title">Module 07 <span>AI — Difficulty Predictor</span></div></div>
@@ -928,21 +1024,11 @@ async function renderM2Verification(headerHex, fields) {
     el.style.transform = 'translateY(0)';
   }
 
-  // Result
+  // Small result badge (full comparison shown in Hash vs Target section below)
   await new Promise(r => setTimeout(r, 400));
   const resultEl = document.createElement('div');
   resultEl.style.cssText = 'opacity:0;transform:translateY(6px);transition:all .3s ease;';
   resultEl.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:10px;">
-      <div style="background:var(--bg2);padding:10px 12px;">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Computed hash</div>
-        <div style="font-size:9px;font-family:var(--mono);color:var(--green);word-break:break-all;">${finalHash}</div>
-      </div>
-      <div style="background:var(--bg2);padding:10px 12px;">
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Target threshold</div>
-        <div style="font-size:9px;font-family:var(--mono);color:var(--orange);word-break:break-all;">${targetHex}</div>
-      </div>
-    </div>
     <div style="padding:10px 14px;background:${isValid?'var(--green-dim)':'var(--red-dim)'};border:1px solid ${isValid?'rgba(0,255,136,.3)':'rgba(255,68,102,.3)'};font-size:11px;font-weight:600;color:${isValid?'var(--green)':'var(--red)'};">
       ${isValid ? '✅ Valid Proof of Work — hash < target · ' + zeros + ' leading zero bits' : '❌ Invalid — hash exceeds target'}
     </div>`;
@@ -1115,13 +1201,16 @@ function renderM3Charts() {
 }
 
 function renderM3Summary(data) {
-  const increases = data.filter(d => d.changePct > 0);
-  const maxInc = data.reduce((a,b) => b.changePct > a.changePct ? b : a, data[0]);
-  const maxDrop = data.reduce((a,b) => b.changePct < a.changePct ? b : a, data[0]);
+  // Filter out genesis/invalid entries (ratio=0 gives -100% drop)
+  const valid = data.filter(d => d.ratio > 0.01 && d.changePct > -99);
+  const increases = valid.filter(d => d.changePct > 0);
+  const maxInc  = valid.length ? valid.reduce((a,b) => b.changePct > a.changePct ? b : a, valid[0]) : data[0];
+  const maxDrop = valid.length ? valid.reduce((a,b) => b.changePct < a.changePct ? b : a, valid[0]) : data[0];
+  const dataForCount = valid;
 
-  document.getElementById('m3-total-adj').textContent = data.length;
+  document.getElementById('m3-total-adj').textContent = valid.length;
   document.getElementById('m3-increases').textContent = increases.length;
-  document.getElementById('m3-increases-sub').textContent = 'vs ' + (data.length - increases.length) + ' decreases';
+  document.getElementById('m3-increases-sub').textContent = 'vs ' + (valid.length - increases.length) + ' decreases';
   document.getElementById('m3-max-inc').textContent = '+' + maxInc.changePct.toFixed(1) + '%';
   document.getElementById('m3-max-inc-date').textContent = new Date(maxInc.ts*1000).toISOString().slice(0,10);
   document.getElementById('m3-max-drop').textContent = maxDrop.changePct.toFixed(1) + '%';
@@ -1162,6 +1251,10 @@ function renderM3DifficultyChart(data) {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
+        zoom: {
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+          pan:  { enabled: true, mode: 'x' },
+        },
         tooltip: {
           backgroundColor: '#111118',
           titleColor: '#00d4ff',
@@ -1288,10 +1381,428 @@ function renderM3FormulaTable(data) {
   tbody.innerHTML = rows.join('') || '<tr><td colspan="8" style="color:var(--text3);text-align:center;">No data</td></tr>';
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+// M4 — AI ANOMALY DETECTOR
+// ══════════════════════════════════════════════════════════════════
+
+let m4Blocks = [];
+let m4Deltas = [];
+let m4LamMLE = 0;
+let m4LowerPct = 5;
+let m4UpperPct = 95;
+let chartM4Timeline = null;
+let chartM4Dist = null;
+
+function onM4ThresholdChange(val) {
+  m4LowerPct = parseInt(val);
+  m4UpperPct = 100 - parseInt(val);
+  let secFeedback = '';
+  if (m4LamMLE > 0) {
+    const lo = (-Math.log(1 - parseInt(val)/100) / m4LamMLE).toFixed(0);
+    const hi = (-Math.log(1 - (100-parseInt(val))/100) / m4LamMLE).toFixed(0);
+    secFeedback = ' (<'+lo+'s / >'+hi+'s)';
+  }
+  document.getElementById('m4-threshold-val').textContent = 'p'+val+' / p'+(100-val)+secFeedback;
+  document.getElementById('m4-ci-label').textContent = (100 - val*2)+'%';
+  if (m4Blocks.length > 0) renderM4(false);
+}
+
+async function loadM4(forceRefresh=false) {
+  const n = parseInt(document.getElementById('m4-slider').value) || 150;
+  document.getElementById('m4-loading').style.display = 'flex';
+  ['m4-model-panel','m4-timeline-panel','m4-dist-panel','m4-table-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  try {
+    m4Blocks = await fetchRecentBlocks(n);
+    renderM4(true);
+    document.getElementById('m4-loading').style.display = 'none';
+    document.getElementById('m4-status').style.display = 'inline-flex';
+  } catch(e) {
+    console.error('M4 failed:', e);
+    document.getElementById('m4-loading').textContent = '⚠ Failed to load data';
+  }
+}
+
+function expCDF(x, lam) { return 1 - Math.exp(-lam * x); }
+function expPDF(x, lam) { return lam * Math.exp(-lam * x); }
+
+function invExpCDF(p, lam) { return -Math.log(1 - p) / lam; }
+
+function ksTest(deltas, lam) {
+  const sorted = [...deltas].sort((a,b) => a-b);
+  const n = sorted.length;
+  let D = 0;
+  sorted.forEach((x, i) => {
+    const empirical = (i+1)/n;
+    const theoretical = expCDF(x, lam);
+    D = Math.max(D, Math.abs(empirical - theoretical));
+  });
+  // Approximate p-value using Kolmogorov distribution
+  const sqrtN = Math.sqrt(n);
+  const z = (sqrtN + 0.12 + 0.11/sqrtN) * D;
+  const pval = 2 * Math.exp(-2 * z * z);
+  return { D, pval: Math.min(1, pval) };
+}
+
+function renderM4(recalculate) {
+  if (recalculate) {
+    const sorted = [...m4Blocks].sort((a,b) => a.timestamp - b.timestamp);
+    m4Deltas = [];
+    for (let i=1; i<sorted.length; i++) {
+      const d = sorted[i].timestamp - sorted[i-1].timestamp;
+      if (d > 0) m4Deltas.push({ delta: d, height: sorted[i].height, ts: sorted[i].timestamp });
+    }
+    m4LamMLE = 1 / (m4Deltas.reduce((s,d) => s+d.delta, 0) / m4Deltas.length);
+  }
+
+  const lam = m4LamMLE;
+  const lowerThresh = invExpCDF(m4LowerPct/100, lam);
+  const upperThresh = invExpCDF(m4UpperPct/100, lam);
+  const meanBT = 1/lam;
+  const lamTheory = 1/600;
+  const deviation = Math.abs(lam - lamTheory) / lamTheory * 100;
+
+  // Classify anomalies
+  const annotated = m4Deltas.map(d => {
+    const pct = expCDF(d.delta, lam) * 100;
+    let type = 'normal';
+    if (pct < m4LowerPct) type = 'fast';
+    else if (pct > m4UpperPct) type = 'slow';
+    return { ...d, pct, type };
+  });
+
+  const anomalies = annotated.filter(d => d.type !== 'normal');
+  const ks = ksTest(m4Deltas.map(d=>d.delta), lam);
+
+  // Update metrics
+  document.getElementById('m4-lam-mle').textContent = lam.toFixed(6) + ' s⁻¹';
+  document.getElementById('m4-mean-bt').textContent = meanBT.toFixed(1) + 's';
+  document.getElementById('m4-n-blocks').textContent = m4Deltas.length;
+  document.getElementById('m4-n-anomalies').textContent = anomalies.length + ' / ' + m4Deltas.length;
+  document.getElementById('m4-detection-rate').textContent = 'Detection rate: ' + (anomalies.length/m4Deltas.length*100).toFixed(1) + '%';
+  document.getElementById('m4-ks-pval').textContent = ks.pval.toFixed(4);
+  document.getElementById('m4-ks-result').textContent = ks.pval > 0.05 ? '✓ Good exponential fit' : '⚠ Significant deviation';
+  document.getElementById('m4-ks-pval').style.color = ks.pval > 0.05 ? 'var(--green)' : 'var(--orange)';
+
+  if (deviation > 10) {
+    document.getElementById('m4-lam-mle').style.color = 'var(--orange)';
+  } else {
+    document.getElementById('m4-lam-mle').style.color = 'var(--blue)';
+  }
+
+  renderM4Timeline(annotated, lowerThresh, upperThresh);
+  renderM4Distribution(annotated, lam, lowerThresh, upperThresh);
+  renderM4Table(anomalies);
+
+  ['m4-model-panel','m4-timeline-panel','m4-dist-panel','m4-table-panel'].forEach(id => {
+    document.getElementById(id).style.display = 'block';
+  });
+}
+
+function renderM4Timeline(annotated, lowerThresh, upperThresh) {
+  const heights = annotated.map(d => '#'+d.height);
+  const deltas  = annotated.map(d => d.delta);
+  const colors  = annotated.map(d => {
+    if (d.type === 'fast') return 'rgba(255,140,0,0.85)';
+    if (d.type === 'slow') return 'rgba(255,68,102,0.85)';
+    return 'rgba(0,212,255,0.5)';
+  });
+  const radii = annotated.map(d => d.type !== 'normal' ? 7 : 4);
+
+  const ctx = document.getElementById('chart-m4-timeline').getContext('2d');
+  if (chartM4Timeline) chartM4Timeline.destroy();
+  chartM4Timeline = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Normal',
+          data: annotated.filter(d=>d.type==='normal').map(d=>({x:d.height,y:d.delta})),
+          backgroundColor:'rgba(0,212,255,0.4)',
+          pointRadius:3,
+        },
+        {
+          label: 'Fast anomaly',
+          data: annotated.filter(d=>d.type==='fast').map(d=>({x:d.height,y:d.delta,pct:d.pct})),
+          backgroundColor:'rgba(255,140,0,0.9)',
+          pointStyle:'triangle',
+          pointRadius:8,
+        },
+        {
+          label: 'Slow anomaly',
+          data: annotated.filter(d=>d.type==='slow').map(d=>({x:d.height,y:d.delta,pct:d.pct})),
+          backgroundColor:'rgba(255,68,102,0.9)',
+          pointStyle:'triangle',
+          rotation:180,
+          pointRadius:8,
+        },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#8888aa',font:{family:'IBM Plex Mono',size:10},boxWidth:12}},
+        tooltip:{
+          backgroundColor:'#111118',titleColor:'#00d4ff',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
+          callbacks:{
+            title: ctx => 'Block #'+fmt(ctx[0].raw.x),
+            label: ctx => {
+              const y = ctx.raw.y;
+              const pct = ctx.raw.pct;
+              const lines = ['Time: '+y+'s'];
+              if (pct !== undefined) lines.push('Percentile: '+pct.toFixed(2)+'%', y < TARGET_BLOCK_TIME*0.5 ? '⚡ Fast block — possible pool advantage' : '🐢 Slow block — possible hashrate drop');
+              return lines;
+            },
+            afterLabel: ctx => {
+              if (ctx.datasetIndex > 0) return ['', 'Click to inspect in M2 →'];
+              return [];
+            }
+          }
+        }
+      },
+      onClick: (e, elements) => {
+        if (!elements.length) return;
+        const el = elements[0];
+        const ds = chartM4Timeline.data.datasets[el.datasetIndex];
+        const pt = ds.data[el.index];
+        if (el.datasetIndex > 0 && pt) {
+          const block = m4Blocks.find(b => b.height === pt.x);
+          if (block) { pendingHashForM2 = block.id; const m2btn = document.querySelectorAll('.nav-tab')[1]; switchTab('m2',m2btn); }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>'#'+fmt(v)},grid:{color:'#1e1e2e'},title:{display:true,text:'Block height',color:'#4a4a6a',font:{size:9}}},
+        y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>v+'s'},grid:{color:'#1e1e2e'},title:{display:true,text:'Inter-block time (s)',color:'#4a4a6a',font:{size:9}}}
+      }
+    }
+  });
+
+  // Add threshold lines
+  chartM4Timeline.options.plugins.annotation = {
+    annotations:{
+      lower:{type:'line',yMin:lowerThresh,yMax:lowerThresh,borderColor:'rgba(255,140,0,0.5)',borderWidth:1,borderDash:[4,3],label:{display:true,content:'p'+m4LowerPct+' ('+lowerThresh.toFixed(0)+'s)',color:'#ff8c00',font:{size:9}}},
+      upper:{type:'line',yMin:upperThresh,yMax:upperThresh,borderColor:'rgba(255,68,102,0.5)',borderWidth:1,borderDash:[4,3],label:{display:true,content:'p'+m4UpperPct+' ('+upperThresh.toFixed(0)+'s)',color:'#ff4466',font:{size:9}}},
+      target:{type:'line',yMin:600,yMax:600,borderColor:'rgba(255,255,255,0.2)',borderWidth:1,borderDash:[2,4]}
+    }
+  };
+  chartM4Timeline.update();
+}
+
+function renderM4Distribution(annotated, lam, lowerThresh, upperThresh) {
+  const deltas = annotated.map(d=>d.delta);
+  const maxD = Math.max(...deltas) * 1.05;
+  const bins = 25, bs = maxD/bins;
+  const counts = new Array(bins).fill(0);
+  deltas.forEach(d => { const b=Math.min(Math.floor(d/bs),bins-1); counts[b]++; });
+  const labels = counts.map((_,i) => Math.round((i+0.5)*bs)+'s');
+  const bgColors = labels.map((_,i) => {
+    const x = (i+0.5)*bs;
+    if (x < lowerThresh) return 'rgba(255,140,0,0.5)';
+    if (x > upperThresh) return 'rgba(255,68,102,0.5)';
+    return 'rgba(0,212,255,0.25)';
+  });
+  const theory = labels.map((_,i) => expPDF((i+0.5)*bs, lam) * deltas.length * bs);
+
+  const ctx = document.getElementById('chart-m4-dist').getContext('2d');
+  if (chartM4Dist) chartM4Dist.destroy();
+  chartM4Dist = new Chart(ctx, {
+    data:{labels, datasets:[
+      {type:'bar',label:'Observed',data:counts,backgroundColor:bgColors,borderWidth:0},
+      {type:'line',label:'Exp(λ=MLE) fit',data:theory,borderColor:'#22c55e',borderWidth:2,pointRadius:0,tension:0.4,borderDash:[]}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#8888aa',font:{family:'IBM Plex Mono',size:10},boxWidth:12}},
+        tooltip:{backgroundColor:'#111118',titleColor:'#22c55e',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1}
+      },
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:8},grid:{color:'#1e1e2e'}},
+        y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#1e1e2e'}}
+      }
+    }
+  });
+}
+
+function renderM4Table(anomalies) {
+  const tbody = document.getElementById('m4-anomaly-tbody');
+  const tableEl = document.getElementById('m4-anomaly-table');
+  const noneEl  = document.getElementById('m4-no-anomalies');
+
+  if (!anomalies.length) {
+    noneEl.style.display = 'block';
+    tableEl.style.display = 'none';
+    return;
+  }
+  noneEl.style.display = 'none';
+  tableEl.style.display = 'table';
+
+  const sorted = [...anomalies].sort((a,b) => a.pct - b.pct);
+  tbody.innerHTML = sorted.map(a => {
+    const isFast = a.type === 'fast';
+    const typeLabel = isFast
+      ? '<span style="color:var(--orange);font-weight:600;">&#9650; Fast</span>'
+      : '<span style="color:var(--red);font-weight:600;">&#9660; Slow</span>';
+    const devPct = isFast
+      ? ((1 - a.delta/600)*100).toFixed(1)+'% faster'
+      : ((a.delta/600-1)*100).toFixed(1)+'% slower';
+
+    return `<tr>
+      <td class="blue clickable" onclick="goToM2FromBlock(${a.height})">#${fmt(a.height)}</td>
+      <td>${a.delta}s</td>
+      <td style="color:${isFast?'var(--orange)':'var(--red)'};">${a.pct.toFixed(2)}%</td>
+      <td>${typeLabel}</td>
+      <td style="color:var(--text3);">${devPct} than target</td>
+    </tr>`;
+  }).join('');
+}
+
+async function goToM2FromBlock(height) {
+  const block = m4Blocks.find(b => b.height === height);
+  if (block) {
+    pendingHashForM2 = block.id;
+    const m2btn = document.querySelectorAll('.nav-tab')[1];
+    switchTab('m2', m2btn);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// THEME TOGGLE
+// ══════════════════════════════════════════════════════════════════
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+  localStorage.setItem('cc-theme', isLight ? 'light' : 'dark');
+  // Redraw charts with new colors
+  if (chartDifficulty) { chartDifficulty.destroy(); chartDifficulty=null; }
+  if (chartRatio) { chartRatio.destroy(); chartRatio=null; }
+  if (m3Loaded) renderM3Charts();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// LOCALSTORAGE PERSISTENCE
+// ══════════════════════════════════════════════════════════════════
+function saveState() {
+  try {
+    const state = {
+      m2Hash:    document.getElementById('m2-hash-input')?.value || '',
+      m3Range:   m3RangeDays,
+      m4Blocks:  document.getElementById('m4-slider')?.value || 150,
+      m4Thresh:  document.getElementById('m4-threshold')?.value || 5,
+    };
+    localStorage.setItem('cc-state', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function restoreState() {
+  try {
+    // Theme
+    const theme = localStorage.getItem('cc-theme');
+    if (theme === 'light') {
+      document.body.classList.add('light');
+      document.getElementById('theme-btn').textContent = '🌙 Dark';
+    }
+    // State
+    const raw = localStorage.getItem('cc-state');
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state.m2Hash) {
+      const inp = document.getElementById('m2-hash-input');
+      if (inp) { inp.value = state.m2Hash; document.getElementById('m2-preload-notice').style.display='block'; document.getElementById('m2-preload-notice').textContent='⚡ Restored from last session — click Inspect to reload'; }
+    }
+    if (state.m3Range) {
+      m3RangeDays = state.m3Range;
+      document.querySelectorAll('.m3-range').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.range) === m3RangeDays);
+      });
+    }
+    if (state.m4Blocks) {
+      const sl = document.getElementById('m4-slider');
+      if (sl) { sl.value = state.m4Blocks; document.getElementById('m4-slider-val').textContent = state.m4Blocks; }
+    }
+    if (state.m4Thresh) {
+      const sl = document.getElementById('m4-threshold');
+      if (sl) { sl.value = state.m4Thresh; document.getElementById('m4-threshold-val').textContent = 'p'+state.m4Thresh+' / p'+(100-state.m4Thresh); }
+    }
+  } catch(e) {}
+}
+
+// Auto-save state every 10 seconds
+setInterval(saveState, 10000);
+
+// ══════════════════════════════════════════════════════════════════
+// WEBSOCKET — REAL-TIME NEW BLOCKS
+// ══════════════════════════════════════════════════════════════════
+let ws = null;
+let wsReconnectTimer = null;
+
+function connectWebSocket() {
+  try {
+    ws = new WebSocket('wss://mempool.space/ws');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ action: 'want', data: ['blocks'] }));
+      console.log('WebSocket connected to mempool.space');
+      updateWsIndicator(true);
+    };
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.block) onNewBlock(msg.block);
+      } catch(e) {}
+    };
+    ws.onclose = () => {
+      updateWsIndicator(false);
+      // Reconnect after 10s
+      wsReconnectTimer = setTimeout(connectWebSocket, 10000);
+    };
+    ws.onerror = () => {
+      updateWsIndicator(false);
+      ws.close();
+    };
+  } catch(e) {
+    console.warn('WebSocket failed:', e);
+  }
+}
+
+function updateWsIndicator(connected) {
+  const dot = document.querySelector('#topbar .live-dot');
+  if (dot) dot.style.background = connected ? 'var(--green)' : 'var(--orange)';
+}
+
+function onNewBlock(block) {
+  // Flash topbar
+  document.getElementById('topbar').classList.add('new-block-flash');
+  setTimeout(() => document.getElementById('topbar').classList.remove('new-block-flash'), 1500);
+
+  // Update topbar metrics
+  lastBlockHeight = block.height;
+  const hashrate = block.difficulty * Math.pow(2,32) / TARGET_BLOCK_TIME;
+  document.getElementById('tb-height').textContent     = '#' + fmt(block.height);
+  document.getElementById('tb-hashrate').textContent   = fmtCompact(hashrate);
+  document.getElementById('tb-difficulty').textContent = fmt(block.difficulty/1e12,2) + ' T';
+
+  // If M1 is active, refresh it
+  const m1Active = document.getElementById('tab-m1').classList.contains('active');
+  if (m1Active) loadM1();
+
+  console.log('New block:', block.height);
+}
+
 // INIT
 (async function init(){
-  await Promise.all([loadM1(),updateTopBar()]);
-  setInterval(()=>{loadM1();updateTopBar()},60000);
+  restoreState();
+  connectWebSocket();
+  await Promise.all([loadM1(), updateTopBar()]);
+  // Cancel old polling if WebSocket is connected, keep as fallback
+  setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      loadM1();
+      updateTopBar();
+    }
+  }, 60000);
 })();
 </script>
 </body>
