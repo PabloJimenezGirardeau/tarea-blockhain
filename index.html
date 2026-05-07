@@ -66,13 +66,13 @@
   /* PANEL */
   .panel { background:var(--bg2); border:1px solid var(--border); padding:16px 20px; margin-bottom:16px; }
   .panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
-  .panel-title { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.12em; display:flex; align-items:center; gap:8px; }
+  .panel-title { font-size:11px; font-weight:600; color:var(--text); text-transform:uppercase; letter-spacing:.12em; display:flex; align-items:center; gap:8px; }
   .panel-title .accent { color:var(--blue); }
 
   /* METRIC GRID */
   .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); }
   .metric-cell { background:var(--bg2); padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
-  .metric-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.1em; }
+  .metric-label { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.1em; }
   .metric-value { font-size:22px; font-weight:600; color:var(--text); line-height:1.1; font-variant-numeric:tabular-nums; }
   .metric-value.blue{color:var(--blue)} .metric-value.green{color:var(--green)} .metric-value.orange{color:var(--orange)} .metric-value.red{color:var(--red)}
   .metric-sub { font-size:10px; color:var(--text3); margin-top:2px; }
@@ -133,7 +133,7 @@
   .btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim)} .btn.primary{border-color:var(--blue);color:var(--blue);background:var(--blue-dim)}
   .tab-page{display:none} .tab-page.active{display:block}
   .page-header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--border); }
-  .page-title { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.15em; }
+  .page-title { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.15em; }
   .page-title span { display:block; font-size:22px; color:var(--text); font-weight:600; letter-spacing:-.01em; margin-top:2px; text-transform:none; }
   @keyframes countUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
   .animated{animation:countUp .4s ease forwards}
@@ -549,12 +549,236 @@
     <div id="m4-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching blocks & running anomaly detector...</div>
   </div>
   <div id="tab-m7" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 07 <span>AI — Difficulty Predictor</span></div></div>
-    <div class="coming-soon"><div class="icon">📊</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 07 <span>AI — Difficulty Predictor</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn primary" onclick="loadM7(true)">🚀 Train &amp; Predict</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div class="slider-row" style="flex:1;min-width:200px;">
+          <label>Train split</label>
+          <input type="range" id="m7-split" min="60" max="90" value="80" step="5" oninput="document.getElementById('m7-split-val').textContent=this.value+'%'">
+          <span class="slider-val" id="m7-split-val">80%</span>
+        </div>
+        <div class="slider-row" style="flex:1;min-width:200px;">
+          <label>Confidence interval</label>
+          <input type="range" id="m7-ci" min="80" max="99" value="90" step="5" oninput="onM7CIChange(this.value)">
+          <span class="slider-val" id="m7-ci-val">90%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model explanation + metrics -->
+    <div class="panel" id="m7-model-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Difficulty Predictor Model</div>
+        <span style="font-size:10px;color:var(--text3)">Linear regression · temporal features · OLS</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.8;margin-bottom:14px;">
+        Predicts the next difficulty adjustment using <span style="color:var(--blue)">4 temporal features</span>:
+        <span style="color:var(--orange)">D<sub>t-1</sub></span> (lag),
+        <span style="color:var(--green)">ratio<sub>t-1</sub></span>,
+        <span style="color:var(--purple)">MA<sub>3</sub></span> (3-period moving avg),
+        <span style="color:var(--yellow)">trend</span> (time index).
+        Train/test split is <span style="color:var(--blue)" id="m7-split-label">80%</span> chronological.
+      </div>
+      <div class="metric-grid" id="m7-metrics">
+        <div class="metric-cell"><div class="metric-label">Training samples</div><div class="metric-value blue" id="m7-n-train">—</div><div class="metric-sub" id="m7-train-sub">—</div></div>
+        <div class="metric-cell"><div class="metric-label">Test samples</div><div class="metric-value" id="m7-n-test">—</div><div class="metric-sub">unseen data</div></div>
+        <div class="metric-cell"><div class="metric-label">R²</div><div class="metric-value green" id="m7-r2">—</div><div class="metric-sub">coefficient of determination</div></div>
+        <div class="metric-cell"><div class="metric-label">MAPE</div><div class="metric-value orange" id="m7-mape">—</div><div class="metric-sub">mean absolute % error</div></div>
+        <div class="metric-cell"><div class="metric-label">MAE</div><div class="metric-value" id="m7-mae">—</div><div class="metric-sub">mean absolute error</div></div>
+        <div class="metric-cell"><div class="metric-label">RMSE</div><div class="metric-value" id="m7-rmse">—</div><div class="metric-sub">root mean squared error</div></div>
+      </div>
+    </div>
+
+    <!-- Prediction box -->
+    <div class="panel" id="m7-pred-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Next Difficulty Adjustment — Prediction</div>
+        <span style="font-size:10px;color:var(--text3)" id="m7-ci-label-header">90% confidence interval</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);">
+        <div style="background:var(--bg2);padding:16px 20px;">
+          <div class="metric-label">Current Difficulty</div>
+          <div style="font-size:20px;font-weight:600;color:var(--blue);margin-top:4px;" id="m7-current-diff">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 20px;">
+          <div class="metric-label">Predicted Next</div>
+          <div style="font-size:20px;font-weight:600;color:var(--orange);margin-top:4px;" id="m7-pred-diff">—</div>
+          <div style="font-size:11px;font-weight:600;margin-top:4px;" id="m7-pred-change">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 20px;">
+          <div class="metric-label" id="m7-ci-metric-label">90% CI Range</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:4px;" id="m7-pred-ci">—</div>
+        </div>
+      </div>
+      <!-- CI bar -->
+      <div style="margin-top:12px;padding:0 4px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;">
+          <span id="m7-ci-low-label">—</span>
+          <span style="color:var(--orange)">▲ Predicted</span>
+          <span id="m7-ci-high-label">—</span>
+        </div>
+        <div style="height:8px;background:var(--bg3);border:1px solid var(--border2);position:relative;overflow:hidden;">
+          <div id="m7-ci-bar-fill" style="position:absolute;height:100%;background:rgba(255,140,0,0.3);transition:all .5s ease;"></div>
+          <div id="m7-ci-bar-point" style="position:absolute;height:100%;width:2px;background:var(--orange);transition:all .5s ease;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="chart-row">
+      <div class="panel" id="m7-chart-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">&#9658;</span> Predictions vs Actual</div>
+          <span style="font-size:10px;color:var(--text3)">blue = train · green = actual test · orange = predicted</span>
+        </div>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-m7-pred"></canvas>
+        </div>
+      </div>
+      <div class="panel" id="m7-residuals-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title"><span class="accent">&#9658;</span> Residuals</div>
+          <span style="font-size:10px;color:var(--text3)">prediction errors over time — random = good fit</span>
+        </div>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-m7-residuals"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature importance -->
+    <div class="panel" id="m7-features-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Feature Importance</div>
+        <span style="font-size:10px;color:var(--text3)">standardised regression coefficients</span>
+      </div>
+      <div style="position:relative;height:180px;">
+        <canvas id="chart-m7-features"></canvas>
+      </div>
+    </div>
+
+    <!-- M4 vs M7 comparison -->
+    <div class="panel" id="m7-compare-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> M4 vs M7 — Comparison of AI Approaches</div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Criterion</th><th style="color:var(--orange)">M4 — Anomaly Detector</th><th style="color:var(--blue)">M7 — Difficulty Predictor</th></tr></thead>
+        <tbody>
+          <tr><td>Problem type</td><td>Anomaly detection (unsupervised)</td><td>Regression (supervised)</td></tr>
+          <tr><td>Model</td><td>Exponential distribution + MLE</td><td>Linear regression (OLS)</td></tr>
+          <tr><td>Data used</td><td>Inter-block times (real-time)</td><td>Historical adjustments (455+ periods)</td></tr>
+          <tr><td>Output</td><td>Anomaly flag per block</td><td>Next difficulty + confidence interval</td></tr>
+          <tr><td>Key metric</td><td>KS test p-value, detection rate</td><td>MAE, RMSE, R², MAPE</td></tr>
+          <tr><td>Strength</td><td>No training data needed, real-time</td><td>Predicts future values</td></tr>
+          <tr><td>Limitation</td><td>Cannot predict future</td><td>Assumes trend continuity</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="m7-loading" style="display:none;" class="loading"><div class="spinner"></div> Loading data &amp; training model...</div>
   </div>
   <div id="tab-m5" class="tab-page">
-    <div class="page-header"><div class="page-title">Module 05 <span>Merkle Proof Verifier</span></div></div>
-    <div class="coming-soon"><div class="icon">🌳</div><span>Coming next</span></div>
+    <div class="page-header">
+      <div class="page-title">Module 05 <span>Merkle Proof Verifier</span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn primary" onclick="loadLatestM5()">⬇ Latest Block</button>
+      </div>
+    </div>
+
+    <!-- Block input -->
+    <div class="panel" style="padding:12px 20px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+        <input id="m5-hash-input" type="text" placeholder="Enter block hash or load latest..." style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 12px;outline:none;" onkeydown="if(event.key==='Enter')loadM5Block()">
+        <button class="btn primary" onclick="loadM5Block()">→ Load Block</button>
+      </div>
+      <div id="m5-tx-controls" style="display:none;">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div class="slider-row" style="flex:2;min-width:200px;">
+            <label>Transaction index</label>
+            <input type="range" id="m5-tx-slider" min="0" max="100" value="0" step="1" oninput="onM5TxChange(this.value)">
+            <span class="slider-val" id="m5-tx-val">0</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex:1;min-width:200px;">
+            <input id="m5-txid-search" type="text" placeholder="Search by TXID..." style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:10px;padding:5px 10px;outline:none;" onkeydown="if(event.key==='Enter')searchTxid()">
+            <button class="btn" onclick="searchTxid()">Find</button>
+          </div>
+        </div>
+        <div id="m5-tx-info" style="margin-top:8px;font-size:10px;color:var(--text3);"></div>
+      </div>
+    </div>
+
+    <!-- Block summary -->
+    <div id="m5-block-summary" style="display:none;background:var(--bg2);border:1px solid var(--border);padding:10px 16px;margin-bottom:16px;display:none;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--text2)">Block <span id="m5-block-height" style="color:var(--blue)">—</span> · <span id="m5-block-txcount" style="color:var(--text3)">—</span> transactions</span>
+      <span style="font-size:10px;color:var(--text3)">Merkle root: <span id="m5-merkle-root-short" style="color:var(--green);font-family:var(--mono)">—</span></span>
+    </div>
+
+    <!-- Proof path diagram -->
+    <div class="panel" id="m5-diagram-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Merkle Proof Path</div>
+        <span style="font-size:10px;color:var(--text3)">&#9650; current hash · &#9651; sibling · ● result — animated</span>
+      </div>
+      <div id="m5-tree-diagram" style="min-height:200px;"></div>
+    </div>
+
+    <!-- Step by step -->
+    <div class="panel" id="m5-steps-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Step-by-Step Verification</div>
+        <span style="font-size:10px;color:var(--text3)">SHA256²(left ∥ right) at each level</span>
+      </div>
+      <div id="m5-steps-container"></div>
+    </div>
+
+    <!-- Result -->
+    <div class="panel" id="m5-result-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Verification Result</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:12px;">
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">Computed Merkle Root</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--green);word-break:break-all;" id="m5-computed-root">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">Block Header Merkle Root (from M2)</div>
+          <div style="font-size:10px;font-family:var(--mono);color:var(--orange);word-break:break-all;" id="m5-expected-root">—</div>
+        </div>
+      </div>
+
+      <div id="m5-result-badge" style="padding:10px 14px;font-size:11px;font-weight:600;margin-bottom:14px;"></div>
+
+      <!-- Savings -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);">
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">Proof hashes needed</div>
+          <div style="font-size:18px;font-weight:600;color:var(--blue);margin-top:4px;" id="m5-proof-hashes">—</div>
+          <div class="metric-sub" id="m5-proof-log">—</div>
+        </div>
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">Full block hashes</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text);margin-top:4px;" id="m5-full-hashes">—</div>
+          <div class="metric-sub">all transaction IDs</div>
+        </div>
+        <div style="background:var(--bg2);padding:12px 14px;">
+          <div class="metric-label">Bandwidth saved</div>
+          <div style="font-size:18px;font-weight:600;color:var(--green);margin-top:4px;" id="m5-savings">—</div>
+          <div class="metric-sub">SPV — Nakamoto §8</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="m5-loading" style="display:none;" class="loading"><div class="spinner"></div> Fetching block transactions...</div>
   </div>
   <div id="tab-m6" class="tab-page">
     <div class="page-header"><div class="page-title">Module 06 <span>Security Score — 51% Attack</span></div></div>
@@ -1789,6 +2013,551 @@ function onNewBlock(block) {
   if (m1Active) loadM1();
 
   console.log('New block:', block.height);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// M7 — DIFFICULTY PREDICTOR (Linear Regression in JS)
+// ══════════════════════════════════════════════════════════════════
+
+let m7AdjData  = [];
+let m7Model    = null;
+let m7CILevel  = 0.90;
+let chartM7Pred = null, chartM7Res = null, chartM7Feat = null;
+
+function onM7CIChange(val) {
+  m7CILevel = parseInt(val) / 100;
+  document.getElementById('m7-ci-val').textContent = val + '%';
+  document.getElementById('m7-ci-label-header').textContent = val + '% confidence interval';
+  document.getElementById('m7-ci-metric-label').textContent = val + '% CI Range';
+  if (m7Model) renderM7Prediction();
+}
+
+// ── OLS Linear Regression ──────────────────────────────────────────
+function matMul(A, B) {
+  const rows = A.length, cols = B[0].length, inner = B.length;
+  return Array.from({length:rows}, (_,i) =>
+    Array.from({length:cols}, (_,j) =>
+      A[i].reduce((s,_,k) => s + A[i][k]*B[k][j], 0)));
+}
+
+function matTranspose(A) {
+  return A[0].map((_,j) => A.map(row => row[j]));
+}
+
+function matInverse2x2(A) {
+  const det = A[0][0]*A[1][1] - A[0][1]*A[1][0];
+  return [[A[1][1]/det, -A[0][1]/det], [-A[1][0]/det, A[0][0]/det]];
+}
+
+// General matrix inverse via Gaussian elimination
+function matInverse(A) {
+  const n = A.length;
+  const aug = A.map((row,i) => [...row, ...Array.from({length:n},(_,j) => i===j?1:0)]);
+  for (let col=0; col<n; col++) {
+    let maxRow = col;
+    for (let row=col+1; row<n; row++) if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) maxRow=row;
+    [aug[col],aug[maxRow]] = [aug[maxRow],aug[col]];
+    const pivot = aug[col][col];
+    if (Math.abs(pivot) < 1e-10) continue;
+    for (let j=0; j<2*n; j++) aug[col][j] /= pivot;
+    for (let row=0; row<n; row++) {
+      if (row === col) continue;
+      const factor = aug[row][col];
+      for (let j=0; j<2*n; j++) aug[row][j] -= factor * aug[col][j];
+    }
+  }
+  return aug.map(row => row.slice(n));
+}
+
+function olsFit(X, y) {
+  const Xt   = matTranspose(X);
+  const XtX  = matMul(Xt, X);
+  const XtXi = matInverse(XtX);
+  const Xty  = matMul(Xt, y.map(v=>[v]));
+  const beta = matMul(XtXi, Xty).map(r=>r[0]);
+  return { beta, XtXi };
+}
+
+function olsPredict(X, beta) {
+  return X.map(row => row.reduce((s,v,i) => s + v*beta[i], 0));
+}
+
+function standardize(X) {
+  const n = X.length, p = X[0].length;
+  const means = Array.from({length:p}, (_,j) => X.reduce((s,r)=>s+r[j],0)/n);
+  const stds  = Array.from({length:p}, (_,j) => {
+    const v = X.reduce((s,r)=>s+Math.pow(r[j]-means[j],2),0)/n;
+    return Math.sqrt(v) || 1;
+  });
+  const Xs = X.map(row => row.map((v,j) => (v-means[j])/stds[j]));
+  return { Xs, means, stds };
+}
+
+function buildFeatures(data) {
+  const rows = [];
+  for (let i=3; i<data.length; i++) {
+    const lag1   = data[i-1].diff;
+    const ratio1 = data[i-1].ratio;
+    const ma3    = (data[i-1].diff + data[i-2].diff + data[i-3].diff) / 3;
+    const trend  = i;
+    const target = data[i].diff;
+    rows.push({ features:[lag1, ratio1, ma3, trend], target, ts:data[i].ts, height:data[i].height, diff:data[i].diff });
+  }
+  return rows;
+}
+
+async function loadM7(forceRefresh=false) {
+  document.getElementById('m7-loading').style.display = 'flex';
+  ['m7-model-panel','m7-pred-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='none');
+
+  try {
+    if (!m7AdjData.length || forceRefresh) {
+      const raw = await fetch(`${API}/v1/mining/difficulty-adjustments`).then(r=>r.json());
+      m7AdjData = [];
+      for (const item of raw) {
+        try {
+          let ts,height,diff,ratio;
+          if (Array.isArray(item)){ts=item[0];height=item[1];diff=item[2];ratio=item[3];}
+          else{ts=item.time||item.timestamp;height=item.height;diff=item.difficulty;ratio=item.adjustment||item.ratio||1;}
+          if(ts&&diff&&parseFloat(ratio)>0.01) m7AdjData.push({ts:parseInt(ts),height:parseInt(height),diff:parseFloat(diff),ratio:parseFloat(ratio)});
+        } catch(e) {}
+      }
+      m7AdjData.sort((a,b)=>a.ts-b.ts);
+    }
+
+    trainAndRender();
+    document.getElementById('m7-loading').style.display = 'none';
+  } catch(e) {
+    console.error('M7 failed:', e);
+    document.getElementById('m7-loading').textContent = '⚠ Failed';
+  }
+}
+
+function trainAndRender() {
+  const splitPct = parseInt(document.getElementById('m7-split').value) / 100;
+  const rows = buildFeatures(m7AdjData);
+  const splitIdx = Math.floor(rows.length * splitPct);
+
+  const trainRows = rows.slice(0, splitIdx);
+  const testRows  = rows.slice(splitIdx);
+
+  const X_train = trainRows.map(r=>r.features);
+  const y_train = trainRows.map(r=>r.target);
+  const X_test  = testRows.map(r=>r.features);
+  const y_test  = testRows.map(r=>r.target);
+
+  // Standardize using train stats
+  const { Xs: X_train_s, means, stds } = standardize(X_train);
+  const X_test_s = X_test.map(row => row.map((v,j) => (v-means[j])/stds[j]));
+
+  // Add intercept
+  const X_train_i = X_train_s.map(r=>[1,...r]);
+  const X_test_i  = X_test_s.map(r=>[1,...r]);
+
+  // Fit OLS
+  const { beta, XtXi } = olsFit(X_train_i, y_train);
+
+  // Predictions
+  const y_pred_train = olsPredict(X_train_i, beta);
+  const y_pred_test  = olsPredict(X_test_i,  beta);
+
+  // Residuals and std
+  const residuals   = y_train.map((y,i) => y - y_pred_train[i]);
+  const stdResid    = Math.sqrt(residuals.reduce((s,r)=>s+r*r,0) / (y_train.length - beta.length));
+
+  // Store model
+  m7Model = { beta, means, stds, stdResid, XtXi, trainRows, testRows, y_pred_test, y_test, splitIdx, rows };
+
+  // Metrics
+  const mae  = y_test.reduce((s,y,i)=>s+Math.abs(y-y_pred_test[i]),0)/y_test.length;
+  const rmse = Math.sqrt(y_test.reduce((s,y,i)=>s+Math.pow(y-y_pred_test[i],2),0)/y_test.length);
+  const ssTot = y_test.reduce((s,y)=>s+Math.pow(y-y_test.reduce((a,b)=>a+b,0)/y_test.length,2),0);
+  const ssRes = y_test.reduce((s,y,i)=>s+Math.pow(y-y_pred_test[i],2),0);
+  const r2   = 1 - ssRes/ssTot;
+  const mape = y_test.reduce((s,y,i)=>s+Math.abs((y-y_pred_test[i])/y)*100,0)/y_test.length;
+
+  // Update UI
+  document.getElementById('m7-split-label').textContent = Math.round(splitPct*100)+'%';
+  document.getElementById('m7-n-train').textContent = trainRows.length;
+  document.getElementById('m7-train-sub').textContent = 'first '+Math.round(splitPct*100)+'% of history';
+  document.getElementById('m7-n-test').textContent = testRows.length;
+  document.getElementById('m7-r2').textContent = r2.toFixed(4);
+  document.getElementById('m7-r2').style.color = r2>0.95?'var(--green)':r2>0.8?'var(--orange)':'var(--red)';
+  document.getElementById('m7-mape').textContent = mape.toFixed(2)+'%';
+  document.getElementById('m7-mae').textContent = fmt(mae/1e12,2)+'T';
+  document.getElementById('m7-rmse').textContent = fmt(rmse/1e12,2)+'T';
+
+  renderM7Prediction();
+  renderM7Charts(trainRows, testRows, y_pred_test, residuals);
+  renderM7Features(beta, stds);
+
+  ['m7-model-panel','m7-pred-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='block');
+}
+
+function renderM7Prediction() {
+  if (!m7Model) return;
+  const { beta, means, stds, stdResid, XtXi, rows } = m7Model;
+  const last = m7AdjData[m7AdjData.length-1];
+  const last3 = m7AdjData.slice(-3);
+  const ma3 = last3.reduce((s,d)=>s+d.diff,0)/3;
+  const trend = rows.length + 1;
+
+  const rawFeat = [last.diff, last.ratio, ma3, trend];
+  const stdFeat = rawFeat.map((v,j) => (v-means[j])/stds[j]);
+  const xNew = [1, ...stdFeat];
+
+  const yHat = xNew.reduce((s,v,i)=>s+v*beta[i],0);
+
+  // Prediction interval
+  const alpha = 1 - m7CILevel;
+  // t critical (approx for large n)
+  const tCrit = alpha < 0.01 ? 2.576 : alpha < 0.05 ? 1.960 : alpha < 0.10 ? 1.645 : 1.282;
+  // Leverage for new point
+  const hii = 1/rows.length;
+  const margin = tCrit * m7Model.stdResid * Math.sqrt(1 + hii);
+
+  const ciLow  = yHat - margin;
+  const ciHigh = yHat + margin;
+  const change = (yHat - last.diff) / last.diff * 100;
+
+  document.getElementById('m7-current-diff').textContent = fmt(last.diff/1e12,2)+'T';
+  document.getElementById('m7-pred-diff').textContent    = fmt(yHat/1e12,2)+'T';
+  document.getElementById('m7-pred-change').textContent  = (change>=0?'+':'')+change.toFixed(2)+'%';
+  document.getElementById('m7-pred-change').style.color  = change>=0?'var(--green)':'var(--red)';
+  document.getElementById('m7-pred-ci').textContent      = fmt(ciLow/1e12,2)+'T – '+fmt(ciHigh/1e12,2)+'T';
+  document.getElementById('m7-ci-low-label').textContent  = fmt(ciLow/1e12,2)+'T';
+  document.getElementById('m7-ci-high-label').textContent = fmt(ciHigh/1e12,2)+'T';
+
+  // CI bar positioning
+  const range = ciHigh - ciLow;
+  const predPct = ((yHat - ciLow) / range * 100).toFixed(1);
+  document.getElementById('m7-ci-bar-fill').style.cssText  = 'position:absolute;height:100%;left:0;right:0;background:rgba(255,140,0,0.2);';
+  document.getElementById('m7-ci-bar-point').style.cssText = `position:absolute;height:100%;width:3px;background:var(--orange);left:${predPct}%;transform:translateX(-50%);transition:all .5s ease;`;
+}
+
+function renderM7Charts(trainRows, testRows, yPredTest, residuals) {
+  const chartOpts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#8888aa',font:{family:'IBM Plex Mono',size:10},boxWidth:12}},tooltip:{backgroundColor:'#111118',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1}},
+    scales:{x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:8},grid:{color:'#1e1e2e'}},y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>(v/1e12).toFixed(0)+'T'},grid:{color:'#1e1e2e'}}}
+  };
+
+  // Predictions chart
+  const trainLabels = trainRows.map(r=>new Date(r.ts*1000).toISOString().slice(0,7));
+  const testLabels  = testRows.map(r=>new Date(r.ts*1000).toISOString().slice(0,7));
+  const allLabels   = [...trainLabels, ...testLabels];
+
+  const ctx1 = document.getElementById('chart-m7-pred').getContext('2d');
+  if (chartM7Pred) chartM7Pred.destroy();
+  chartM7Pred = new Chart(ctx1, {
+    type:'line',
+    data:{labels:allLabels, datasets:[
+      {label:'Training data',data:[...trainRows.map(r=>r.diff/1e12),...testRows.map(()=>null)],borderColor:'rgba(59,130,246,0.5)',borderWidth:1.5,pointRadius:0,tension:0.3},
+      {label:'Actual (test)',data:[...trainRows.map(()=>null),...testRows.map(r=>r.diff/1e12)],borderColor:'#22c55e',borderWidth:2,pointRadius:3,tension:0.3},
+      {label:'Predicted',data:[...trainRows.map(()=>null),...yPredTest.map(v=>v/1e12)],borderColor:'#ff8c00',borderWidth:2,borderDash:[4,3],pointRadius:3,pointStyle:'diamond',tension:0.3},
+    ]},
+    options:{...chartOpts,
+      plugins:{...chartOpts.plugins,
+        annotation:{annotations:{splitLine:{type:'line',xMin:trainLabels.length-1,xMax:trainLabels.length-1,borderColor:'rgba(255,255,255,0.3)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Train/Test split',color:'#8888aa',font:{size:9}}}}}
+      }
+    }
+  });
+
+  // Residuals chart
+  const ctx2 = document.getElementById('chart-m7-residuals').getContext('2d');
+  if (chartM7Res) chartM7Res.destroy();
+  const residColors = residuals.map(r => r>0?'rgba(255,68,102,0.6)':'rgba(0,212,255,0.6)');
+  chartM7Res = new Chart(ctx2, {
+    type:'bar',
+    data:{labels:trainLabels, datasets:[{label:'Residuals (T)',data:residuals.map(r=>r/1e12),backgroundColor:residColors,borderWidth:0}]},
+    options:{...chartOpts,
+      plugins:{...chartOpts.plugins,
+        annotation:{annotations:{zeroLine:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.3)',borderWidth:1}}}
+      }
+    }
+  });
+}
+
+function renderM7Features(beta, stds) {
+  // beta[0] is intercept, skip it
+  const featureNames = ['D(t-1) lag', 'Ratio(t-1)', 'MA3', 'Trend'];
+  const coeffs = beta.slice(1);
+  const absCoeffs = coeffs.map(Math.abs);
+  const maxAbs = Math.max(...absCoeffs);
+  const colors = ['#ff8c00','#22c55e','#9d4edd','#ffd700'];
+
+  const ctx3 = document.getElementById('chart-m7-features').getContext('2d');
+  if (chartM7Feat) chartM7Feat.destroy();
+  chartM7Feat = new Chart(ctx3, {
+    type:'bar',
+    data:{labels:featureNames, datasets:[{
+      label:'Standardised coefficient (absolute)',
+      data:absCoeffs,
+      backgroundColor:colors,
+      borderWidth:0,
+      borderRadius:2,
+    }]},
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#111118',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,callbacks:{label:ctx=>'Coeff: '+coeffs[ctx.dataIndex].toFixed(4)}}},
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#1e1e2e'},title:{display:true,text:'|coefficient|',color:'#4a4a6a',font:{size:9}}},
+        y:{ticks:{color:'#8888aa',font:{size:10,family:'IBM Plex Mono'}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// M5 — MERKLE PROOF VERIFIER
+// ══════════════════════════════════════════════════════════════════
+
+let m5Txids = [];
+let m5Block = null;
+let m5CurrentTxIndex = 0;
+let m5AnimTimeout = null;
+
+// Reuse double_sha256 from M2 (Web Crypto)
+async function sha256d(data) {
+  const h1 = await crypto.subtle.digest('SHA-256', data);
+  const h2 = await crypto.subtle.digest('SHA-256', h1);
+  return new Uint8Array(h2);
+}
+
+function hexToUint8(hex) {
+  const arr = new Uint8Array(hex.length/2);
+  for (let i=0; i<arr.length; i++) arr[i] = parseInt(hex.slice(i*2,i*2+2),16);
+  return arr;
+}
+
+function uint8ToHex(arr) {
+  return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function reverseTxid(txid) {
+  return uint8ToHex(hexToUint8(txid).reverse());
+}
+
+async function buildMerkleProof(txids, txIndex) {
+  let level = txids.map(t => hexToUint8(reverseTxid(t)));
+  const proof = [];
+
+  while (level.length > 1) {
+    if (level.length % 2 === 1) level.push(level[level.length-1]);
+    const siblingIdx = txIndex % 2 === 0 ? txIndex+1 : txIndex-1;
+    const sibling    = level[Math.min(siblingIdx, level.length-1)];
+    const current    = level[txIndex];
+    const position   = txIndex % 2 === 0 ? 'right' : 'left';
+    const left       = position === 'right' ? current : sibling;
+    const right      = position === 'right' ? sibling : current;
+    const combined   = new Uint8Array([...left, ...right]);
+    const result     = await sha256d(combined);
+
+    proof.push({
+      level:       proof.length,
+      current:     uint8ToHex(current.slice().reverse()),
+      sibling:     uint8ToHex(sibling.slice().reverse()),
+      position,
+      left:        uint8ToHex(left.slice().reverse()),
+      right:       uint8ToHex(right.slice().reverse()),
+      result:      uint8ToHex(result.slice().reverse()),
+    });
+
+    // Build next level
+    const next = [];
+    for (let i=0; i<level.length; i+=2) {
+      const l = level[i], r = level[i+1] || level[i];
+      const c = new Uint8Array([...l,...r]);
+      next.push(await sha256d(c));
+    }
+    level = next;
+    txIndex = Math.floor(txIndex/2);
+  }
+
+  const root = uint8ToHex(level[0].slice().reverse());
+  return { proof, root };
+}
+
+async function loadLatestM5() {
+  const tipHash = await fetch(`${API}/blocks/tip/hash`).then(r=>r.text());
+  document.getElementById('m5-hash-input').value = tipHash.trim();
+  await loadM5Block();
+}
+
+async function loadM5Block() {
+  const hash = document.getElementById('m5-hash-input').value.trim();
+  if (!hash) return;
+  document.getElementById('m5-loading').style.display = 'flex';
+  ['m5-diagram-panel','m5-steps-panel','m5-result-panel'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('m5-tx-controls').style.display = 'none';
+  document.getElementById('m5-block-summary').style.display = 'none';
+
+  try {
+    const [block, txids] = await Promise.all([
+      fetch(`${API}/block/${hash}`).then(r=>r.json()),
+      fetch(`${API}/block/${hash}/txids`).then(r=>r.json()),
+    ]);
+    m5Block = block;
+    m5Txids = txids;
+    m5CurrentTxIndex = 0;
+
+    const slider = document.getElementById('m5-tx-slider');
+    slider.max = txids.length - 1;
+    slider.value = 0;
+    document.getElementById('m5-tx-val').textContent = '0';
+    document.getElementById('m5-tx-controls').style.display = 'block';
+
+    const summary = document.getElementById('m5-block-summary');
+    summary.style.display = 'flex';
+    document.getElementById('m5-block-height').textContent = '#' + fmt(block.height);
+    document.getElementById('m5-block-txcount').textContent = fmt(txids.length);
+    const mr = block.merkle_root || block.merkleroot || '';
+    document.getElementById('m5-merkle-root-short').textContent = mr.slice(0,12)+'...'+mr.slice(-8);
+
+    document.getElementById('m5-loading').style.display = 'none';
+    await verifyM5(0);
+  } catch(e) {
+    console.error('M5 failed:', e);
+    document.getElementById('m5-loading').textContent = '⚠ Failed: ' + e.message;
+  }
+}
+
+function onM5TxChange(val) {
+  m5CurrentTxIndex = parseInt(val);
+  document.getElementById('m5-tx-val').textContent = val;
+  const txid = m5Txids[m5CurrentTxIndex] || '';
+  document.getElementById('m5-tx-info').textContent = txid ? 'TXID: ' + txid.slice(0,20)+'...'+txid.slice(-8) + (m5CurrentTxIndex===0?' (coinbase)':'') : '';
+  if (m5Txids.length) verifyM5(m5CurrentTxIndex);
+}
+
+function searchTxid() {
+  const q = document.getElementById('m5-txid-search').value.trim().toLowerCase();
+  if (!q || !m5Txids.length) return;
+  const idx = m5Txids.findIndex(t => t.toLowerCase().includes(q));
+  if (idx >= 0) {
+    document.getElementById('m5-tx-slider').value = idx;
+    onM5TxChange(idx);
+  } else {
+    document.getElementById('m5-tx-info').textContent = '⚠ TXID not found in this block';
+  }
+}
+
+async function verifyM5(txIndex) {
+  if (!m5Txids.length) return;
+  document.getElementById('m5-loading').style.display = 'flex';
+
+  const { proof, root } = await buildMerkleProof(m5Txids, txIndex);
+  const expectedRoot = m5Block.merkle_root || m5Block.merkleroot || '';
+  const isValid = root === expectedRoot;
+  const nTxs = m5Txids.length;
+  const log2n = Math.ceil(Math.log2(Math.max(nTxs,2)));
+
+  document.getElementById('m5-loading').style.display = 'none';
+
+  // Result
+  document.getElementById('m5-computed-root').textContent = root;
+  document.getElementById('m5-expected-root').textContent = expectedRoot;
+  const badge = document.getElementById('m5-result-badge');
+  badge.textContent = isValid
+    ? '✅ Merkle proof VALID — transaction #'+txIndex+' is confirmed in this block'
+    : '❌ Merkle proof INVALID — root mismatch';
+  badge.style.cssText = `background:${isValid?'var(--green-dim)':'var(--red-dim)'};border:1px solid ${isValid?'rgba(0,255,136,.3)':'rgba(255,68,102,.3)'};color:${isValid?'var(--green)':'var(--red)'};padding:10px 14px;`;
+
+  document.getElementById('m5-proof-hashes').textContent = proof.length;
+  document.getElementById('m5-proof-log').textContent = '= ceil(log₂('+nTxs+')) = '+log2n;
+  document.getElementById('m5-full-hashes').textContent = fmt(nTxs);
+  document.getElementById('m5-savings').textContent = ((1-proof.length/nTxs)*100).toFixed(1)+'%';
+
+  // Animated diagram
+  renderM5Diagram(proof, txIndex);
+  renderM5Steps(proof, txIndex);
+
+  ['m5-diagram-panel','m5-steps-panel','m5-result-panel'].forEach(id=>document.getElementById(id).style.display='block');
+}
+
+function renderM5Diagram(proof, txIndex) {
+  const container = document.getElementById('m5-tree-diagram');
+  container.innerHTML = '';
+
+  const levels = proof.length + 1;
+  const nodeH  = 52, levelGap = 70;
+  const totalH = levels * levelGap + 40;
+  const W      = container.offsetWidth || 800;
+
+  let html = `<svg width="100%" height="${totalH}" style="font-family:var(--mono);">`;
+
+  // Draw each proof step
+  proof.forEach((step, i) => {
+    const y      = i * levelGap + 20;
+    const yNext  = (i+1) * levelGap + 20;
+    const xCur   = W * 0.35;
+    const xSib   = step.position === 'right' ? W * 0.65 : W * 0.05;
+    const xRes   = W * 0.35;
+
+    // Edges
+    html += `<line x1="${xCur}" y1="${y+16}" x2="${xRes}" y2="${yNext-16}" stroke="rgba(0,212,255,0.3)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    html += `<line x1="${xSib}" y1="${y+16}" x2="${xRes}" y2="${yNext-16}" stroke="rgba(255,140,0,0.3)" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+
+    // Current node
+    html += `<g class="m5-node" style="opacity:0;animation:nodeIn .4s ease ${i*0.25}s forwards">
+      <rect x="${xCur-70}" y="${y-14}" width="140" height="28" rx="3" fill="rgba(0,212,255,0.15)" stroke="var(--blue)" stroke-width="1.5"/>
+      <text x="${xCur}" y="${y+4}" text-anchor="middle" font-size="9" fill="var(--blue)">${step.current.slice(0,10)}...${step.current.slice(-6)}</text>
+      <text x="${xCur}" y="${y-18}" text-anchor="middle" font-size="8" fill="var(--text3)">Level ${i} · current</text>
+    </g>`;
+
+    // Sibling node
+    html += `<g class="m5-node" style="opacity:0;animation:nodeIn .4s ease ${i*0.25+0.1}s forwards">
+      <rect x="${xSib-70}" y="${y-14}" width="140" height="28" rx="3" fill="rgba(255,140,0,0.15)" stroke="var(--orange)" stroke-width="1.5"/>
+      <text x="${xSib}" y="${y+4}" text-anchor="middle" font-size="9" fill="var(--orange)">${step.sibling.slice(0,10)}...${step.sibling.slice(-6)}</text>
+      <text x="${xSib}" y="${y-18}" text-anchor="middle" font-size="8" fill="var(--text3)">${step.position} sibling</text>
+    </g>`;
+  });
+
+  // Root node
+  const yRoot = proof.length * levelGap + 20;
+  const lastResult = proof.length ? proof[proof.length-1].result : (m5Txids[txIndex]||'');
+  html += `<g style="opacity:0;animation:nodeIn .4s ease ${proof.length*0.25+0.1}s forwards">
+    <rect x="${W*0.35-80}" y="${yRoot-14}" width="160" height="28" rx="3" fill="rgba(157,78,221,0.2)" stroke="var(--purple)" stroke-width="2"/>
+    <text x="${W*0.35}" y="${yRoot+4}" text-anchor="middle" font-size="9" fill="var(--purple)">${lastResult.slice(0,12)}...${lastResult.slice(-8)}</text>
+    <text x="${W*0.35}" y="${yRoot-18}" text-anchor="middle" font-size="8" fill="var(--text3)">Merkle Root ✓</text>
+  </g>`;
+
+  html += '</svg>';
+  container.innerHTML = html;
+
+  // Inject animation keyframe if not present
+  if (!document.getElementById('m5-anim-style')) {
+    const style = document.createElement('style');
+    style.id = 'm5-anim-style';
+    style.textContent = '@keyframes nodeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}';
+    document.head.appendChild(style);
+  }
+}
+
+function renderM5Steps(proof, txIndex) {
+  const container = document.getElementById('m5-steps-container');
+  container.innerHTML = proof.map((step, i) => `
+    <div style="opacity:0;animation:nodeIn .4s ease ${i*0.15}s forwards;border:1px solid var(--border2);padding:12px 14px;margin-bottom:8px;background:var(--bg3);">
+      <div style="font-size:10px;color:var(--blue);font-weight:600;margin-bottom:8px;">
+        Level ${step.level} → ${step.level+1} · sibling on the <span style="color:var(--orange)">${step.position}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:9px;color:var(--text3);margin-bottom:3px;">Current hash</div>
+          <div style="font-size:9px;font-family:var(--mono);color:var(--blue);word-break:break-all;padding:4px 6px;background:var(--bg2);">${step.current}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text3);margin-bottom:3px;">Sibling hash (${step.position})</div>
+          <div style="font-size:9px;font-family:var(--mono);color:var(--orange);word-break:break-all;padding:4px 6px;background:var(--bg2);">${step.sibling}</div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:var(--text3);margin-bottom:3px;">SHA256²(left ∥ right) →</div>
+      <div style="font-size:9px;font-family:var(--mono);color:var(--green);word-break:break-all;padding:4px 6px;background:var(--bg2);border-left:2px solid var(--green);">${step.result}</div>
+    </div>
+  `).join('');
 }
 
 // INIT
