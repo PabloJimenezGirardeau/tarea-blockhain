@@ -7,8 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.2.1/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -23,19 +24,7 @@
     --text:#e2e2f0; --text2:#8888aa; --text3:#4a4a6a;
     --mono:'IBM Plex Mono',monospace;
   }
-  body.light {
-    --bg:#f0f2f8; --bg2:#ffffff; --bg3:#e8eaf0;
-    --border:#d0d4e8; --border2:#b8bdd4;
-    --text:#1a1a2e; --text2:#4a4a6a; --text3:#8888aa;
-    --blue:#0077cc; --blue-dim:rgba(0,119,204,0.08);
-    --green:#00aa55; --green-dim:rgba(0,170,85,0.08);
-    --red:#cc2244; --red-dim:rgba(204,34,68,0.08);
-    --orange:#cc6600; --orange-dim:rgba(204,102,0,0.08);
-  }
-  body.light .live-dot { background: var(--green); }
-  body.light .hash-display { color: var(--text2); }
-  .theme-btn { background:transparent; border:1px solid var(--border2); color:var(--text2); font-family:var(--mono); font-size:10px; padding:3px 8px; cursor:pointer; letter-spacing:.05em; transition:all .15s; }
-  .theme-btn:hover { border-color:var(--blue); color:var(--blue); }
+
   html,body { background:var(--bg); color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5; min-height:100vh; overflow-x:hidden; }
   body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); pointer-events:none; z-index:9999; }
 
@@ -159,7 +148,6 @@
   <div class="ticker-item"><span class="ticker-label">Difficulty</span><span class="ticker-value" id="tb-difficulty">—</span></div>
   <div class="ticker-item"><span class="ticker-label">Mempool</span><span class="ticker-value" id="tb-mempool">—</span></div>
   <div class="spacer"></div>
-  <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
   <div class="clock" id="clock">—</div>
 </div>
 
@@ -406,14 +394,18 @@
     </div>
 
     <div class="panel" style="padding:10px 20px;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;">Range:</span>
-        <button class="btn m3-range active" data-range="30"  onclick="setM3Range(30,this)">1M</button>
-        <button class="btn m3-range"        data-range="90"  onclick="setM3Range(90,this)">3M</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;">Range:</span>
+        <button class="btn m3-range active" data-range="90"  onclick="setM3Range(90,this)">3M</button>
         <button class="btn m3-range"        data-range="180" onclick="setM3Range(180,this)">6M</button>
         <button class="btn m3-range"        data-range="365" onclick="setM3Range(365,this)">1Y</button>
+        <button class="btn m3-range"        data-range="730" onclick="setM3Range(730,this)">2Y</button>
         <button class="btn m3-range"        data-range="9999" onclick="setM3Range(9999,this)">ALL</button>
-        <span style="font-size:10px;color:var(--text3);margin-left:12px;">scroll to zoom · drag to pan</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:8px;">use 1M/3M/6M/1Y/ALL to zoom</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:10px;color:var(--text2);">M7 Prediction</span>
+          <input type="checkbox" id="m3-show-m7" onchange="renderM3Charts()" style="accent-color:var(--orange);">
+        </div>
       </div>
     </div>
 
@@ -631,12 +623,23 @@
       </div>
     </div>
 
+    <!-- Multi-period prediction -->
+    <div class="panel" id="m7-multi-panel" style="display:none">
+      <div class="panel-header">
+        <div class="panel-title"><span class="accent">&#9658;</span> Multi-Period Forecast — Next 5 Adjustments</div>
+        <span style="font-size:10px;color:var(--text3)">uncertainty grows with each step</span>
+      </div>
+      <div style="position:relative;height:240px;">
+        <canvas id="chart-m7-multi"></canvas>
+      </div>
+    </div>
+
     <!-- Charts row -->
     <div class="chart-row">
       <div class="panel" id="m7-chart-panel" style="display:none">
         <div class="panel-header">
           <div class="panel-title"><span class="accent">&#9658;</span> Predictions vs Actual</div>
-          <span style="font-size:10px;color:var(--text3)">blue = train · green = actual test · orange = predicted</span>
+          <span style="font-size:10px;color:var(--text3)">blue = train · green = actual · orange = predicted · scroll to zoom</span>
         </div>
         <div style="position:relative;height:260px;">
           <canvas id="chart-m7-pred"></canvas>
@@ -1467,7 +1470,7 @@ async function loadM2Compare() {
 // ══════════════════════════════════════════════════════════════════
 
 let m3AdjData = [];
-let m3RangeDays = 30;
+let m3RangeDays = 90;
 let chartDifficulty = null;
 let chartRatio = null;
 let m3Loaded = false;
@@ -1543,18 +1546,38 @@ function renderM3DifficultyChart(data) {
   const pointColors = data.map(d => d.changePct >= 0 ? 'rgba(0,255,136,0.8)' : 'rgba(255,68,102,0.8)');
   const pointRadius = data.map(d => Math.abs(d.changePct) > 5 ? 5 : 3);
 
-  // Find China ban (biggest drop)
-  const chinaIdx = data.indexOf(data.reduce((a,b) => b.changePct < a.changePct ? b : a, data[0]));
+  // Find China ban (biggest drop) — works at any range
+  const chinaEntry = data.reduce((a,b) => b.changePct < a.changePct ? b : a, data[0]);
+  const chinaIdx   = data.indexOf(chinaEntry);
+  const isChina    = chinaEntry.changePct < -15; // only annotate if it's actually a big drop
 
   const ctx = document.getElementById('chart-difficulty').getContext('2d');
   if (chartDifficulty) chartDifficulty.destroy();
+  // Get M7 prediction if checkbox is on
+  const showM7Pred = document.getElementById('m3-show-m7')?.checked;
+  let m7PredPoint = null, m7PredLow = null, m7PredHigh = null;
+  if (showM7Pred && m7Model) {
+    const { beta, means, stds, stdResid, rows } = m7Model;
+    const lastAdj = m3AdjData[m3AdjData.length-1];
+    const last3   = m3AdjData.slice(-3);
+    const ma3     = last3.reduce((s,d)=>s+d.diff,0)/3;
+    const rawFeat = [lastAdj.diff, lastAdj.ratio, ma3, rows.length+1];
+    const stdFeat = rawFeat.map((v,j)=>(v-means[j])/stds[j]);
+    const xNew    = [1,...stdFeat];
+    const yHat    = xNew.reduce((s,v,i)=>s+v*beta[i],0);
+    const margin  = 1.96 * stdResid * Math.sqrt(1+1/rows.length);
+    m7PredPoint = yHat/1e12;
+    m7PredLow   = (yHat-margin)/1e12;
+    m7PredHigh  = (yHat+margin)/1e12;
+  }
+
   chartDifficulty = new Chart(ctx, {
     type: 'line',
     data: {
-      labels,
+      labels: showM7Pred && m7PredPoint ? [...labels, 'Next →'] : labels,
       datasets: [{
         label: 'Difficulty (T)',
-        data: diffs,
+        data: showM7Pred && m7PredPoint ? [...diffs, null] : diffs,
         borderColor: '#3b82f6',
         borderWidth: 1.5,
         backgroundColor: 'rgba(59,130,246,0.06)',
@@ -1564,17 +1587,24 @@ function renderM3DifficultyChart(data) {
         pointBorderColor: pointColors,
         pointRadius: pointRadius,
         pointHoverRadius: 7,
-      }]
-    },
+      },
+      ...(showM7Pred && m7PredPoint ? [{
+        label: 'M7 Prediction',
+        data: [...diffs.map(()=>null), m7PredPoint],
+        borderColor:'#ff8c00',
+        backgroundColor:'rgba(255,140,0,0.9)',
+        pointRadius:12, pointStyle:'star',
+        pointBackgroundColor:'#ff8c00',
+        showLine:false,
+      }] : [])
+    ]},
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
-        zoom: {
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-          pan:  { enabled: true, mode: 'x' },
-        },
+        zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } },
+
         tooltip: {
           backgroundColor: '#111118',
           titleColor: '#00d4ff',
@@ -1602,9 +1632,10 @@ function renderM3DifficultyChart(data) {
               borderColor: 'rgba(255,68,102,0.6)',
               borderWidth: 1.5,
               borderDash: [4,3],
+              display: isChina,
               label: {
-                display: true,
-                content: '▼ China ban -27.9%',
+                display: isChina,
+                content: '▼ Largest drop: '+chinaEntry.changePct.toFixed(1)+'%',
                 color: '#ff4466',
                 backgroundColor: 'rgba(255,68,102,0.15)',
                 font: { size: 10, family: 'IBM Plex Mono' },
@@ -1989,18 +2020,7 @@ async function goToM2FromBlock(height) {
 }
 
 
-// ══════════════════════════════════════════════════════════════════
-// THEME TOGGLE
-// ══════════════════════════════════════════════════════════════════
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light');
-  document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
-  localStorage.setItem('cc-theme', isLight ? 'light' : 'dark');
-  // Redraw charts with new colors
-  if (chartDifficulty) { chartDifficulty.destroy(); chartDifficulty=null; }
-  if (chartRatio) { chartRatio.destroy(); chartRatio=null; }
-  if (m3Loaded) renderM3Charts();
-}
+
 
 // ══════════════════════════════════════════════════════════════════
 // LOCALSTORAGE PERSISTENCE
@@ -2019,12 +2039,6 @@ function saveState() {
 
 function restoreState() {
   try {
-    // Theme
-    const theme = localStorage.getItem('cc-theme');
-    if (theme === 'light') {
-      document.body.classList.add('light');
-      document.getElementById('theme-btn').textContent = '🌙 Dark';
-    }
     // State
     const raw = localStorage.getItem('cc-state');
     if (!raw) return;
@@ -2119,14 +2133,17 @@ function onNewBlock(block) {
 let m7AdjData  = [];
 let m7Model    = null;
 let m7CILevel  = 0.90;
-let chartM7Pred = null, chartM7Res = null, chartM7Feat = null;
+let chartM7Pred = null, chartM7Res = null, chartM7Feat = null, chartM7Multi = null;
 
 function onM7CIChange(val) {
   m7CILevel = parseInt(val) / 100;
   document.getElementById('m7-ci-val').textContent = val + '%';
   document.getElementById('m7-ci-label-header').textContent = val + '% confidence interval';
   document.getElementById('m7-ci-metric-label').textContent = val + '% CI Range';
-  if (m7Model) renderM7Prediction();
+  if (m7Model) {
+    renderM7Prediction();
+    renderM7MultiPeriod();
+  }
 }
 
 // ── OLS Linear Regression ──────────────────────────────────────────
@@ -2205,7 +2222,7 @@ function buildFeatures(data) {
 
 async function loadM7(forceRefresh=false) {
   document.getElementById('m7-loading').style.display = 'flex';
-  ['m7-model-panel','m7-pred-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='none');
+  ['m7-model-panel','m7-pred-panel','m7-multi-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='none');
 
   try {
     if (!m7AdjData.length || forceRefresh) {
@@ -2263,7 +2280,7 @@ function trainAndRender() {
   const stdResid    = Math.sqrt(residuals.reduce((s,r)=>s+r*r,0) / (y_train.length - beta.length));
 
   // Store model
-  m7Model = { beta, means, stds, stdResid, XtXi, trainRows, testRows, y_pred_test, y_test, splitIdx, rows };
+  m7Model = { beta, means, stds, stdResid, XtXi, trainRows, testRows, y_pred_test, y_test, splitIdx, rows, residuals };
 
   // Metrics
   const mae  = y_test.reduce((s,y,i)=>s+Math.abs(y-y_pred_test[i]),0)/y_test.length;
@@ -2287,8 +2304,9 @@ function trainAndRender() {
   renderM7Prediction();
   renderM7Charts(trainRows, testRows, y_pred_test, residuals);
   renderM7Features(beta, stds);
+  renderM7MultiPeriod();
 
-  ['m7-model-panel','m7-pred-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='block');
+  ['m7-model-panel','m7-pred-panel','m7-multi-panel','m7-chart-panel','m7-residuals-panel','m7-features-panel','m7-compare-panel'].forEach(id=>document.getElementById(id).style.display='block');
 }
 
 function renderM7Prediction() {
@@ -2355,7 +2373,9 @@ function renderM7Charts(trainRows, testRows, yPredTest, residuals) {
     ]},
     options:{...chartOpts,
       plugins:{...chartOpts.plugins,
-        annotation:{annotations:{splitLine:{type:'line',xMin:trainLabels.length-1,xMax:trainLabels.length-1,borderColor:'rgba(255,255,255,0.3)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Train/Test split',color:'#8888aa',font:{size:9}}}}}
+        zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}},
+        annotation:{annotations:{splitLine:{type:'line',xMin:trainLabels.length-1,xMax:trainLabels.length-1,borderColor:'rgba(255,255,255,0.3)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Train/Test split',color:'#8888aa',font:{size:9}}}}},
+        zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}}
       }
     }
   });
@@ -2376,31 +2396,40 @@ function renderM7Charts(trainRows, testRows, yPredTest, residuals) {
 }
 
 function renderM7Features(beta, stds) {
-  // beta[0] is intercept, skip it
   const featureNames = ['D(t-1) lag', 'Ratio(t-1)', 'MA3', 'Trend'];
-  const coeffs = beta.slice(1);
+  const coeffs   = beta.slice(1);
   const absCoeffs = coeffs.map(Math.abs);
-  const maxAbs = Math.max(...absCoeffs);
-  const colors = ['#ff8c00','#22c55e','#9d4edd','#ffd700'];
+  const total    = absCoeffs.reduce((a,b)=>a+b, 0) || 1;
+  const pctImportance = absCoeffs.map(v => (v/total*100));
+  const colors   = ['#ff8c00','#22c55e','#9d4edd','#ffd700'];
 
   const ctx3 = document.getElementById('chart-m7-features').getContext('2d');
   if (chartM7Feat) chartM7Feat.destroy();
   chartM7Feat = new Chart(ctx3, {
     type:'bar',
     data:{labels:featureNames, datasets:[{
-      label:'Standardised coefficient (absolute)',
-      data:absCoeffs,
-      backgroundColor:colors,
-      borderWidth:0,
-      borderRadius:2,
+      label:'Relative importance (%)',
+      data:pctImportance,
+      backgroundColor:colors.map(c=>c+'cc'),
+      borderColor:colors,
+      borderWidth:1.5,
+      borderRadius:3,
     }]},
     options:{
       indexAxis:'y',
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#111118',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,callbacks:{label:ctx=>'Coeff: '+coeffs[ctx.dataIndex].toFixed(4)}}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#111118',titleColor:'#00d4ff',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
+          callbacks:{
+            label:ctx=>'Importance: '+pctImportance[ctx.dataIndex].toFixed(1)+'%',
+            afterLabel:ctx=>'Raw coeff: '+coeffs[ctx.dataIndex].toFixed(4)
+          }
+        }
+      },
       scales:{
-        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'}},grid:{color:'#1e1e2e'},title:{display:true,text:'|coefficient|',color:'#4a4a6a',font:{size:9}}},
-        y:{ticks:{color:'#8888aa',font:{size:10,family:'IBM Plex Mono'}},grid:{display:false}}
+        x:{min:0,max:100,ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>v+'%'},grid:{color:'#1e1e2e'},title:{display:true,text:'Relative importance (%)',color:'#4a4a6a',font:{size:9}}},
+        y:{ticks:{color:'#e2e2f0',font:{size:10,family:'IBM Plex Mono'}},grid:{display:false}}
       }
     }
   });
@@ -2770,12 +2799,12 @@ function renderM6(data) {
   const rationalEl  = document.getElementById('m6-rational');
   const rationalSub = document.getElementById('m6-rational-sub');
   if (isRational) {
-    rationalEl.textContent  = '✅ Rational';
-    rationalEl.style.color  = 'var(--green)';
+    rationalEl.textContent  = '⚠ Rational';
+    rationalEl.style.color  = 'var(--red)';
     rationalSub.textContent = 'Cost < block rewards — theoretically profitable';
   } else {
-    rationalEl.textContent  = '⚠ Irrational';
-    rationalEl.style.color  = 'var(--red)';
+    rationalEl.textContent  = '✅ Irrational';
+    rationalEl.style.color  = 'var(--green)';
     rationalSub.textContent = 'Cost > rewards — economically pointless';
   }
 
@@ -2940,13 +2969,18 @@ function renderM6Comparison(btcEhs, price) {
       borderColor:colors,
       borderWidth:1.5,
       borderRadius:3,
+      datalabels:{display:false}
     }]},
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
         tooltip:{backgroundColor:'#111118',titleColor:'#00d4ff',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
-          callbacks:{label:ctx=>'$'+fmt(ctx.parsed.y)+'/hr · $'+fmt(ctx.parsed.y*24)+'/day'}}
+          callbacks:{
+            label:ctx=>'$'+fmt(ctx.parsed.y)+'/hr',
+            afterLabel:ctx=>['$'+fmt(ctx.parsed.y*24)+'/day','$'+fmt(ctx.parsed.y*720)+'/month']
+          }
+        }
       },
       scales:{
         x:{ticks:{color:'#8888aa',font:{size:10,family:'IBM Plex Mono'}},grid:{display:false}},
@@ -2955,6 +2989,94 @@ function renderM6Comparison(btcEhs, price) {
     }
   });
 }
+
+
+function renderM7MultiPeriod() {
+  if (!m7Model || !m7AdjData.length) return;
+  const { beta, means, stds, stdResid, rows } = m7Model;
+  const N_AHEAD = 5;
+  const alpha = 1 - m7CILevel;
+  const tCrit = alpha<0.01?2.576:alpha<0.05?1.960:alpha<0.10?1.645:1.282;
+
+  // Start from last known data point
+  let prevData = m7AdjData.slice(-3);
+  const forecasts = [];
+  let timeIdx = rows.length + 1;
+
+  for (let step=1; step<=N_AHEAD; step++) {
+    const last = prevData[prevData.length-1];
+    const ma3  = prevData.slice(-3).reduce((s,d)=>s+d.diff,0)/Math.min(3,prevData.length);
+    const rawFeat = [last.diff, last.ratio, ma3, timeIdx++];
+    const stdFeat = rawFeat.map((v,j)=>(v-means[j])/stds[j]);
+    const xNew    = [1,...stdFeat];
+    const yHat    = xNew.reduce((s,v,i)=>s+v*beta[i],0);
+    // PI grows with step
+    const margin  = tCrit * stdResid * Math.sqrt(1 + 1/rows.length) * Math.sqrt(step);
+    forecasts.push({
+      step,
+      predicted: yHat,
+      low:  yHat - margin,
+      high: yHat + margin,
+      label: 'Adj +'+(step),
+    });
+    prevData = [...prevData, {diff:yHat, ratio:1.0, ts:last.ts+2016*600}];
+  }
+
+  // Historical last 10 + forecasts — use unified labels
+  const histLast   = m7AdjData.slice(-10);
+  const histDiffs  = histLast.map(d=>d.diff/1e12);
+  const histLabels = histLast.map(d=>new Date(d.ts*1000).toISOString().slice(0,7));
+  const foreLabels = forecasts.map(f=>f.label);
+  // Add "Now" as bridge point, then forecast labels
+  const allLabels  = [...histLabels, 'Now', ...foreLabels];
+
+  const ctx = document.getElementById('chart-m7-multi').getContext('2d');
+  if (chartM7Multi) chartM7Multi.destroy();
+  chartM7Multi = new Chart(ctx, {
+    type:'line',
+    data:{labels:allLabels, datasets:[
+      {
+        label:'Historical',
+        data:[...histDiffs,histDiffs[histDiffs.length-1],...forecasts.map(()=>null)],
+        borderColor:'#3b82f6',borderWidth:2,pointRadius:3,tension:0.3,
+      },
+      {
+        label:'Predicted',
+        data:[...histDiffs.map(()=>null),histDiffs[histDiffs.length-1],...forecasts.map(f=>f.predicted/1e12)], spanGaps:false,
+        borderColor:'#ff8c00',borderWidth:2,borderDash:[5,3],
+        pointRadius:5,pointBackgroundColor:'#ff8c00',tension:0.3,
+      },
+      {
+        label:'95% CI upper',
+        data:[...histDiffs.map(()=>null),histDiffs[histDiffs.length-1],...forecasts.map(f=>f.high/1e12)], spanGaps:false,
+        borderColor:'rgba(255,140,0,0.2)',borderWidth:1,pointRadius:0,fill:'+1',
+        backgroundColor:'rgba(255,140,0,0.08)',tension:0.3,
+      },
+      {
+        label:'95% CI lower',
+        data:[...histDiffs.map(()=>null),histDiffs[histDiffs.length-1],...forecasts.map(f=>f.low/1e12)], spanGaps:false,
+        borderColor:'rgba(255,140,0,0.2)',borderWidth:1,pointRadius:0,tension:0.3,
+      },
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#8888aa',font:{family:'IBM Plex Mono',size:10},boxWidth:12,filter:item=>item.text!=='95% CI upper'&&item.text!=='95% CI lower'}},
+        tooltip:{backgroundColor:'#111118',titleColor:'#ff8c00',bodyColor:'#8888aa',borderColor:'#2a2a3e',borderWidth:1,
+          callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y?.toFixed(2)+'T'}
+        },
+        zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}},
+
+        annotation:{annotations:{splitLine:{type:'line',xMin:histLabels.length-0.5,xMax:histLabels.length-0.5,borderColor:'rgba(255,255,255,0.2)',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Forecast →',color:'#8888aa',font:{size:9}}}}}
+      },
+      scales:{
+        x:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},maxTicksLimit:10},grid:{color:'#1e1e2e'}},
+        y:{ticks:{color:'#4a4a6a',font:{size:9,family:'IBM Plex Mono'},callback:v=>v?.toFixed(0)+'T'},grid:{color:'#1e1e2e'},title:{display:true,text:'Difficulty (T)',color:'#4a4a6a',font:{size:9}}}
+      }
+    }
+  });
+}
+
 
 // INIT
 (async function init(){
