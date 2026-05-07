@@ -22,6 +22,12 @@ A single-file HTML dashboard that connects directly to the Bitcoin network via p
 
 ---
 
+## Live Demo
+
+https://pablojimenezgirardeau.github.io/tarea-blockhain/
+
+---
+
 ## How to Run
 
 Run a local server from the project folder:
@@ -45,6 +51,8 @@ No pip install, no virtual environment, no setup required.
 | M5 | Merkle Proof Verifier | Done |
 | M6 | Security Score — 51% Attack | Done |
 | M7 | AI — Difficulty Predictor (optional) | Done |
+| M8 | SHA-256 Hash Explorer (optional) | Done |
+| M9 | Blockchain Integrity Verifier (optional) | Done |
 
 ---
 
@@ -57,6 +65,8 @@ No pip install, no virtual environment, no setup required.
 - Click-through navigation — click any block hash in M1 to inspect its header in M2
 - M3 + M7 connected — enable the M7 prediction overlay directly on the difficulty history chart
 - Multi-period forecast in M7 — predicts next 5 difficulty adjustments with confidence intervals
+- SHA-256 avalanche effect demo in M8 — live hashing with mini PoW miner and real mining time estimate
+- Blockchain integrity verification in M9 — cryptographic chain validation with immutability visualization
 
 ---
 
@@ -67,42 +77,3 @@ No pip install, no virtual environment, no setup required.
     |-- README.md
     |-- PROPOSALS.md      <- roadmap of future improvements
     |-- .gitignore
-
----
-
-## APIs Used
-
-| API | Purpose |
-|---|---|
-| mempool.space/api | Blocks, headers, txids, difficulty adjustments |
-| mempool.space/ws | WebSocket for real-time block updates |
-| mempool.space/api/v1/prices | Live BTC price in top bar |
-
-All APIs are free and require no registration or API key.
-
----
-
-## Main Problem or Blocker
-
-No blockers.
-
----
-
-<!-- student-repo-auditor:teacher-feedback:start -->
-## Teacher Feedback
-### Kick-off Review
-Review time: 2026-04-29 20:44 CEST
-Status: Green
-Strength:
-- I can see the dashboard structure integrating the checkpoint modules.
-Improve now:
-- M3 still needs a clearer difficulty-history implementation with charting and adjustment evidence.
-Next step:
-- Add a real difficulty-history chart and connect it to adjustment-period evidence.
-
-### Student Response
-Feedback implemented on 2026-04-30:
-- M3 now includes a full historical difficulty chart with 455 adjustment event markers.
-- Block time ratio per adjustment period added, directly addressing the adjustment-period evidence requested.
-- Section 6.1 formula applied with predicted vs actual difficulty values for each period.
-<!-- student-repo-auditor:teacher-feedback:end -->
